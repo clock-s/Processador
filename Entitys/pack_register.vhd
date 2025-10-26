@@ -13,7 +13,7 @@ entity PACK_REGISTERS_PORTS is port(
     
     addr  : in std_logic_vector (1 downto 0) := "00";
     
-    data : inout std_logic_vector (7 downto 0);
+    data : inout std_logic_vector (7 downto 0)
     
     --debug : out register_array(3 downto 0);
         
@@ -31,7 +31,7 @@ architecture PACK_REGISTERS of PACK_REGISTERS_PORTS is
       write_enable : in std_logic; 
       read_enable : in std_logic;
 
-      gate : inout std_logic_vector (7 downto 0);
+      gate : inout std_logic_vector (7 downto 0)
       --debug: out std_logic_vector (7 downto 0);
 
     );

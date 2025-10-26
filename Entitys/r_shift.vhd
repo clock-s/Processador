@@ -35,11 +35,10 @@ begin
    	process(clock, reset)
     begin
         
-        if rising_edge(reset) then
+        if reset = '1' then
         	flag_box <= "00";
-        end if;
-        
-        if rising_edge(clock) then
+        	contador <= 0; -- Precaução
+        elsif rising_edge(clock) then
         
         	if flag_box(0) = '0' then
             	temp_out <= input;

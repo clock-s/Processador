@@ -5,6 +5,7 @@ use ieee.std_logic_1164.all;
 -- S = A - B
 entity SUBTRACTION_8_BITS_PORTS is port(
 	S : out std_logic_vector (7 downto 0);
+    carry : out std_logic;
     
     A : in std_logic_vector (7 downto 0);
     B : in std_logic_vector (7 downto 0)
@@ -33,13 +34,12 @@ architecture SUBTRACTION_8_BITS of SUBTRACTION_8_BITS_PORTS is
     
     signal B_inverted : std_logic_vector (7 downto 0);
     
-    signal cout : std_logic;
 	signal cin  : std_logic := '1';
 begin
 
 	U1 : INVERTER_8_BITS_PORTS port map(B_inverted, B);
     
-    U2 : SUM_8_BITS_PORTS port map(cout, S, A, B_inverted, cin);
+    U2 : SUM_8_BITS_PORTS port map(carry, S, A, B_inverted, cin);
 
 end SUBTRACTION_8_BITS;
 

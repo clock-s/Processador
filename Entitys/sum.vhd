@@ -29,7 +29,7 @@ use ieee.std_logic_1164.all;
 
 entity SUM_8_BITS_PORTS is port(
 	cout : out std_logic;
-    S    : out std_logic_vector (7 downto 0):= "00000000";
+    S    : out std_logic_vector (7 downto 0);
 
     A 	 : in  std_logic_vector (7 downto 0);
     B 	 : in  std_logic_vector (7 downto 0);

@@ -9,7 +9,7 @@ entity U_REGISTER_PORT is port(
     write_enable : in std_logic; 
     read_enable : in std_logic;
     
-	gate : inout std_logic_vector (7 downto 0);
+	gate : inout std_logic_vector (7 downto 0)
     
     --debug : out std_logic_vector(7 downto 0); --Coloque para receber o valor da box
 );
@@ -29,9 +29,8 @@ begin
     begin
     	if reset = '1' then
         	box <= "00000000";
-        end if;
-    
-    	if rising_edge(clock) then
+        
+        elsif rising_edge(clock) then
         	if write_enable = '1' then
             	box <= gate;
         	end if;
