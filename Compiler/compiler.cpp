@@ -5,11 +5,23 @@
 
 using namespace std;
 
+map<string, uint8_t> registers_first_operand;
+map<string, uint8_t> registers_second_operand;
 
 const string memory_registers = "r1 r2 r3 r4";
 const string math_registers = "x y z w";
 const string special_registers = "a ma";
 const string memory = "[ma]";
+
+void load(string &instruction, size_t &line, size_t &PC, FILE* output);
+void sum(string &instruction, size_t &line, size_t &PC, FILE* output);
+void mult(string &instruction, size_t &line, size_t &PC, FILE* output);
+void sub(string &instruction, size_t &line, size_t &PC, FILE* output);
+void comp(string &instruction, size_t &line, size_t &PC, FILE* output);
+void div(string &instruction, size_t &line, size_t &PC, FILE* output);
+void mod(string &instruction, size_t &line, size_t &PC, FILE* output);
+void b_not(string &instruction, size_t &line, size_t &PC, FILE* output);
+
 
 bool is_all_digits(string s){
     for(int i = 0 ; i < s.size() ; i++){
@@ -36,6 +48,15 @@ bool is_math_register(string s){
 bool is_special_register(string s){
     if(special_registers.find(s) != string::npos) return true;
     return false;
+}
+
+void operand_to_opcode(map<string, uint8_t> &reg_map, const string &operand, int8_t &opcode, const size_t &line){
+    if(reg_map.find(operand) != reg_map.end()){
+        opcode = reg_map[operand];  
+    }else{
+        printf("Error in line %ld, incorrect operand or instruction.\n", line);
+        exit(3);
+    } 
 }
 
 
@@ -76,16 +97,17 @@ int main(int argc, char const *argv[]){
     
     
 
-    map<string, uint8_t> registers_first_operand;
+    
     registers_first_operand["r1"] = registers_first_operand["x"] = 0; //0000
     registers_first_operand["r2"] = registers_first_operand["y"] = 4; //0100
     registers_first_operand["r3"] = registers_first_operand["z"] = 8; //1000
     registers_first_operand["r4"] = registers_first_operand["w"] = 12; //1100
     registers_first_operand["a"] = registers_first_operand["ma"] = 128; // out of all ranges, dont had a pattern
+    
 
 
 
-    map<string, uint8_t> registers_second_operand;
+    
     registers_second_operand["r1"] = registers_second_operand["x"] = 0; //0000
     registers_second_operand["r2"] = registers_second_operand["y"] = 1; //0001
     registers_second_operand["r3"] = registers_second_operand["z"] = 2; //0010
@@ -124,271 +146,12 @@ int main(int argc, char const *argv[]){
         if(instruction.size() > 1){
             
 
-            //================================================ LOAD ================================================//
-            if(instruction.find("load") != string::npos){
-                uint8_t instruction_size = 4;
-                uint8_t comma_index = -1;
-
-                int8_t opcode_first_value = 0;
-                int8_t opcode_second_value = 0;
-                bool extern_value = false;
-
-                string second_operand;
-                
-
-                
-                operands = instruction.substr(instruction_size, instruction.size()- instruction_size - 1);
-                instruction = instruction.substr(0, instruction_size);
-
-
-                comma_index = operands.find(',');
-                if(operands.find(',') == string::npos){
-                    printf("Error in line %ld, miss a comma (,)\n", line);
-                    exit(2);
-                }
-
-                second_operand = operands.substr(comma_index + 1, operands.size() - (comma_index + 1));
-                operands = operands.substr(0, comma_index);
-
-                if(!is_all_digits(operands)){
-                    opcode_first_value = registers_first_operand[operands];
-                }else{
-                    printf("Error in line %ld, syntaxe statemant\n", line);
-                    exit(1);
-                }
-
-                if(!is_all_digits(second_operand)){
-                    opcode_second_value = registers_second_operand[second_operand];
-                }else{
-                    extern_value = true;
-                    opcode_second_value = atoi(second_operand.c_str());
-                }
-
-                //0001XXXX
-                if(is_math_register(operands) && is_memory_register(second_operand)) opcode = 0x10;
-
-                //0010XXXX
-                else if(is_memory_register(operands) && is_math_register(second_operand)) opcode = 0x20;
-
-                //0011XXXX
-                else if(is_memory_register(operands) && (is_memory_register(second_operand) || extern_value)) opcode = 0x30;
-
-                //0010XXXX
-                else if((is_memory_register(operands) && is_special_register(second_operand))
-                 || (operands.compare("ma") && is_memory_register(second_operand))) opcode = 0x40;
-
-                else{
-                    printf("Error in line %ld, syntaxe statemant\n", line);
-                    exit(1);
-                }
-                
-                if(!extern_value){
-                    opcode = opcode + opcode_first_value + opcode_second_value;
-                    fwrite(&opcode, sizeof(uint8_t), 1, output_file); 
-                    PC++;
-
-                }else{
-                    opcode = opcode + opcode_first_value + opcode_first_value/4;
-                    fwrite(&opcode, sizeof(uint8_t), 1, output_file);
-                    PC++;
-                    
-                    opcode = opcode_second_value;
-                    fwrite(&opcode, sizeof(uint8_t), 1, output_file);
-                    PC++;
-                }
-
-                cout << PC-1 << ":" << instruction  << " " << operands << " " << second_operand << endl;
             
+            if(instruction.find("load") != string::npos) load(instruction, line, PC, output_file);
+            else if(instruction.find("sum") != string::npos) sum(instruction, line, PC, output_file);
+            else if(instruction.find("mult") != string::npos) mult(instruction, line, PC, output_file);
+            else if(instruction.find("sub") != string::npos) sub(instruction, line, PC, output_file);
 
-            }
-
-            //======================================================================================================//
-
-
-            //================================================ SUM ================================================//
-            if(instruction.find("sum") != string::npos){
-                uint8_t instruction_size = 3;
-                uint8_t comma_index = -1;
-
-                int8_t opcode_first_value = 0;
-                int8_t opcode_second_value = 0;
-                bool first_extern_value = false;
-                bool second_extern_value = false;
-
-                string second_operand;
-
-                operands = instruction.substr(instruction_size, instruction.size() - instruction_size - 1);
-                instruction = instruction.substr(0, instruction_size);
-
-
-                comma_index = operands.find(',');
-                if(operands.find(',') == string::npos){
-                    printf("Error in line %ld, miss a comma (,)\n", line);
-                    exit(2);
-                }
-
-                second_operand = operands.substr(comma_index + 1, operands.size() - (comma_index + 1));
-                operands = operands.substr(0, comma_index);
-
-
-                //0110XXXX
-                opcode += 0x60;
-
-
-                if(is_all_digits(operands) && is_all_digits(second_operand)){
-                    opcode += 0xE;
-                    first_extern_value = true;
-                    second_extern_value = true;
-                    opcode_first_value = atoi(operands.c_str());
-                    opcode_second_value = atoi(second_operand.c_str());
-
-                }else if(is_all_digits(operands) && is_math_register(second_operand)){
-                    swap(operands, second_operand);
-                    second_extern_value = true;
-                    opcode_second_value = atoi(second_operand.c_str());
-                }   
-                
-                if(!is_all_digits(operands)){
-                    opcode_first_value = registers_first_operand[operands];
-                }
-                if(!is_all_digits(second_operand)){
-                    opcode_second_value = registers_second_operand[second_operand];
-                }
-
-                if(is_math_register(operands) && is_math_register(second_operand)){
-                    if((opcode_first_value >> 2) > opcode_second_value){
-                        swap(opcode_first_value, opcode_second_value);
-                        opcode_first_value = opcode_first_value << 2;
-                        opcode_second_value = opcode_second_value >> 2;
-                    }
-                }
-
-                if(is_math_register(operands) && is_math_register(second_operand)) opcode += opcode_first_value + opcode_second_value;
-
-                else if(is_math_register(operands) && is_all_digits(second_operand)){
-                    if(operands.find("x") != string::npos){
-                        opcode += 0xD;
-                    }else{
-                        opcode += opcode_first_value;
-                    }
-                    second_extern_value = true;
-                    opcode_second_value = atoi(second_operand.c_str());
-                }
-                
-
-                fwrite(&opcode, sizeof(uint8_t), 1, output_file);
-                PC++;
-
-                if(first_extern_value){
-                    fwrite(&opcode_first_value, sizeof(uint8_t), 1, output_file);
-                    PC++;
-                }
-
-                if(second_extern_value){
-                    fwrite(&opcode_second_value, sizeof(uint8_t), 1, output_file);
-                    PC++;
-                }
-
-
-                cout << PC-1 << ":" << instruction  << " " << operands << " " << second_operand << endl;
-
-
-            }
-
-            //======================================================================================================//
-
-            //================================================ MULT ================================================//
-
-            if(instruction.find("mult") != string::npos){
-                uint8_t instruction_size = 4;
-                uint8_t comma_index = -1;
-
-                int8_t opcode_first_value = 0;
-                int8_t opcode_second_value = 0;
-                bool first_extern_value = false;
-                bool second_extern_value = false;
-
-                string second_operand;
-
-                operands = instruction.substr(instruction_size, instruction.size() - instruction_size - 1);
-                instruction = instruction.substr(0, instruction_size);
-
-
-                comma_index = operands.find(',');
-                if(operands.find(',') == string::npos){
-                    printf("Error in line %ld, miss a comma (,)\n", line);
-                    exit(2);
-                }
-
-                second_operand = operands.substr(comma_index + 1, operands.size() - (comma_index + 1));
-                operands = operands.substr(0, comma_index);
-
-
-                //0111XXXX
-                opcode += 0x70;
-
-
-                if(is_all_digits(operands) && is_all_digits(second_operand)){
-                    opcode += 0xE;
-                    first_extern_value = true;
-                    second_extern_value = true;
-                    opcode_first_value = atoi(operands.c_str());
-                    opcode_second_value = atoi(second_operand.c_str());
-
-                }else if(is_all_digits(operands) && is_math_register(second_operand)){
-                    swap(operands, second_operand);
-                    second_extern_value = true;
-                    opcode_second_value = atoi(second_operand.c_str());
-                }   
-                
-                if(!is_all_digits(operands)){
-                    opcode_first_value = registers_first_operand[operands];
-                }
-                if(!is_all_digits(second_operand)){
-                    opcode_second_value = registers_second_operand[second_operand];
-                }
-
-                if(is_math_register(operands) && is_math_register(second_operand)){
-                    if((opcode_first_value >> 2) > opcode_second_value){
-                        swap(opcode_first_value, opcode_second_value);
-                        opcode_first_value = opcode_first_value << 2;
-                        opcode_second_value = opcode_second_value >> 2;
-                    }
-                }
-
-                if(is_math_register(operands) && is_math_register(second_operand)) opcode += opcode_first_value + opcode_second_value;
-
-                else if(is_math_register(operands) && is_all_digits(second_operand)){
-                    if(operands.find("x") != string::npos){
-                        opcode += 0xD;
-                    }else{
-                        opcode += opcode_first_value;
-                    }
-                    second_extern_value = true;
-                    opcode_second_value = atoi(second_operand.c_str());
-                }
-                
-
-                fwrite(&opcode, sizeof(uint8_t), 1, output_file);
-                PC++;
-
-                if(first_extern_value){
-                    fwrite(&opcode_first_value, sizeof(uint8_t), 1, output_file);
-                    PC++;
-                }
-
-                if(second_extern_value){
-                    fwrite(&opcode_second_value, sizeof(uint8_t), 1, output_file);
-                    PC++;
-                }
-
-
-                cout << PC-1 << ":" << instruction  << " " << operands << " " << second_operand << endl;
-
-
-            }
-
-            //======================================================================================================//
 
 
         }
@@ -405,3 +168,397 @@ int main(int argc, char const *argv[]){
     
     return 0;
 }
+
+
+void load(string &instruction, size_t &line, size_t &PC, FILE* output){
+    uint8_t instruction_size = 4;
+    uint8_t comma_index = -1;
+    uint8_t opcode = 0;
+
+    int8_t opcode_first_value = 0;
+    int8_t opcode_second_value = 0;
+    bool extern_value = false;
+
+    string operands;
+    string second_operand;
+    
+
+    
+    operands = instruction.substr(instruction_size, instruction.size()- instruction_size - 1);
+    instruction = instruction.substr(0, instruction_size);
+
+
+    comma_index = operands.find(',');
+    if(operands.find(',') == string::npos){
+        printf("Error in line %ld, miss a comma (,)\n", line);
+        exit(2);
+    }
+
+    second_operand = operands.substr(comma_index + 1, operands.size() - (comma_index + 1));
+    operands = operands.substr(0, comma_index);
+
+    if(!is_all_digits(operands)){
+        operand_to_opcode(registers_first_operand, operands, opcode_first_value, line);
+    }else{
+        printf("Error in line %ld, syntaxe statemant\n", line);
+        exit(1);
+    }
+
+    if(!is_all_digits(second_operand)){
+        operand_to_opcode(registers_second_operand, second_operand, opcode_second_value, line);
+    }else{
+        extern_value = true;
+        opcode_second_value = atoi(second_operand.c_str());
+    }
+
+    //0001XXXX
+    if(is_math_register(operands) && is_memory_register(second_operand)) opcode = 0x10;
+
+    //0010XXXX
+    else if(is_memory_register(operands) && is_math_register(second_operand)) opcode = 0x20;
+
+    //0011XXXX
+    else if(is_memory_register(operands) && (is_memory_register(second_operand) || extern_value)) opcode = 0x30;
+
+    //0010XXXX
+    else if((is_memory_register(operands) && is_special_register(second_operand))
+    || (operands.compare("ma") && is_memory_register(second_operand))) opcode = 0x40;
+
+    else{
+        printf("Error in line %ld, syntaxe statemant\n", line);
+        exit(1);
+    }
+    
+    if(!extern_value){
+        opcode = opcode + opcode_first_value + opcode_second_value;
+        fwrite(&opcode, sizeof(uint8_t), 1, output); 
+        PC++;
+
+    }else{
+        opcode = opcode + opcode_first_value + opcode_first_value/4;
+        fwrite(&opcode, sizeof(uint8_t), 1, output);
+        PC++;
+        
+        opcode = opcode_second_value;
+        fwrite(&opcode, sizeof(uint8_t), 1, output);
+        PC++;
+    }
+
+    cout << PC-1 << ":" << instruction  << " " << operands << " " << second_operand << endl;
+            
+}
+
+
+void sum(string &instruction, size_t &line, size_t &PC, FILE* output){
+    uint8_t instruction_size = 3;
+    uint8_t comma_index = -1;
+    uint8_t opcode = 0;
+
+    int8_t opcode_first_value = 0;
+    int8_t opcode_second_value = 0;
+    bool first_extern_value = false;
+    bool second_extern_value = false;
+
+    string operands;
+    string second_operand;
+
+    operands = instruction.substr(instruction_size, instruction.size() - instruction_size - 1);
+    instruction = instruction.substr(0, instruction_size);
+
+
+    comma_index = operands.find(',');
+    if(operands.find(',') == string::npos){
+        printf("Error in line %ld, miss a comma (,)\n", line);
+        exit(2);
+    }
+
+    second_operand = operands.substr(comma_index + 1, operands.size() - (comma_index + 1));
+    operands = operands.substr(0, comma_index);
+
+
+    //0110XXXX
+    opcode += 0x60;
+
+
+    if(is_all_digits(operands) && is_all_digits(second_operand)){
+        opcode += 0xE;
+        first_extern_value = true;
+        second_extern_value = true;
+        opcode_first_value = atoi(operands.c_str());
+        opcode_second_value = atoi(second_operand.c_str());
+
+    }else if(is_all_digits(operands) && is_math_register(second_operand)){
+        swap(operands, second_operand);
+        second_extern_value = true;
+        opcode_second_value = atoi(second_operand.c_str());
+    }   
+    
+    if(!is_all_digits(operands))       operand_to_opcode(registers_first_operand, operands, opcode_first_value, line);
+    if(!is_all_digits(second_operand)) operand_to_opcode(registers_second_operand, second_operand, opcode_second_value, line);
+
+    if(is_math_register(operands) && is_math_register(second_operand)){
+        if((opcode_first_value >> 2) > opcode_second_value){
+            swap(opcode_first_value, opcode_second_value);
+            opcode_first_value = opcode_first_value << 2;
+            opcode_second_value = opcode_second_value >> 2;
+        }
+    }
+
+    if(is_math_register(operands) && is_math_register(second_operand)) opcode += opcode_first_value + opcode_second_value;
+
+    else if(is_math_register(operands) && is_all_digits(second_operand)){
+        if(operands.find("x") != string::npos){
+            opcode += 0xD;
+        }else{
+            opcode += opcode_first_value;
+        }
+        second_extern_value = true;
+        opcode_second_value = atoi(second_operand.c_str());
+    }
+    
+
+    fwrite(&opcode, sizeof(uint8_t), 1, output);
+    PC++;
+
+    if(first_extern_value){
+        fwrite(&opcode_first_value, sizeof(uint8_t), 1, output);
+        PC++;
+    }
+
+    if(second_extern_value){
+        fwrite(&opcode_second_value, sizeof(uint8_t), 1, output);
+        PC++;
+    }
+
+
+    cout << PC-1 << ":" << instruction  << " " << operands << " " << second_operand << endl;
+}
+
+
+void mult(string &instruction, size_t &line, size_t &PC, FILE* output){
+    uint8_t instruction_size = 4;
+    uint8_t comma_index = -1;
+    uint8_t opcode = 0;
+
+    int8_t opcode_first_value = 0;
+    int8_t opcode_second_value = 0;
+    bool first_extern_value = false;
+    bool second_extern_value = false;
+
+    string operands;
+    string second_operand;
+
+    operands = instruction.substr(instruction_size, instruction.size() - instruction_size - 1);
+    instruction = instruction.substr(0, instruction_size);
+
+
+    comma_index = operands.find(',');
+    if(operands.find(',') == string::npos){
+        printf("Error in line %ld, miss a comma (,)\n", line);
+        exit(2);
+    }
+
+    second_operand = operands.substr(comma_index + 1, operands.size() - (comma_index + 1));
+    operands = operands.substr(0, comma_index);
+
+
+    //0111XXXX
+    opcode += 0x70;
+
+
+    if(is_all_digits(operands) && is_all_digits(second_operand)){
+        opcode += 0xE;
+        first_extern_value = true;
+        second_extern_value = true;
+        opcode_first_value = atoi(operands.c_str());
+        opcode_second_value = atoi(second_operand.c_str());
+
+    }else if(is_all_digits(operands) && is_math_register(second_operand)){
+        swap(operands, second_operand);
+        second_extern_value = true;
+        opcode_second_value = atoi(second_operand.c_str());
+    }   
+    
+
+    if(!is_all_digits(operands))       operand_to_opcode(registers_first_operand, operands, opcode_first_value, line);
+    if(!is_all_digits(second_operand)) operand_to_opcode(registers_second_operand, second_operand, opcode_second_value, line);
+
+
+    if(is_math_register(operands) && is_math_register(second_operand)){
+        if((opcode_first_value >> 2) > opcode_second_value){
+            swap(opcode_first_value, opcode_second_value);
+            opcode_first_value = opcode_first_value << 2;
+            opcode_second_value = opcode_second_value >> 2;
+        }
+    }
+
+    if(is_math_register(operands) && is_math_register(second_operand)) opcode += opcode_first_value + opcode_second_value;
+
+    else if(is_math_register(operands) && is_all_digits(second_operand)){
+        if(operands.find("x") != string::npos){
+            opcode += 0xD;
+        }else{
+            opcode += opcode_first_value;
+        }
+        second_extern_value = true;
+        opcode_second_value = atoi(second_operand.c_str());
+    }
+    
+
+    fwrite(&opcode, sizeof(uint8_t), 1, output);
+    PC++;
+
+    if(first_extern_value){
+        fwrite(&opcode_first_value, sizeof(uint8_t), 1, output);
+        PC++;
+    }
+
+    if(second_extern_value){
+        fwrite(&opcode_second_value, sizeof(uint8_t), 1, output);
+        PC++;
+    }
+
+
+    cout << PC-1 << ":" << instruction  << " " << operands << " " << second_operand << endl;
+}
+
+void sub(string &instruction, size_t &line, size_t &PC, FILE* output){
+    uint8_t instruction_size = 3;
+    uint8_t comma_index = -1;
+    uint8_t opcode = 0;
+
+    int8_t opcode_first_value = 0;
+    int8_t opcode_second_value = 0;
+    bool first_extern_value = false;
+    bool second_extern_value = false;
+    bool is_a_sum = false;
+
+    string operands;
+    string second_operand;
+
+    operands = instruction.substr(instruction_size, instruction.size() - instruction_size - 1);
+    instruction = instruction.substr(0, instruction_size);
+
+
+    comma_index = operands.find(',');
+    if(operands.find(',') == string::npos){
+        printf("Error in line %ld, miss a comma (,)\n", line);
+        exit(2);
+    }
+
+    second_operand = operands.substr(comma_index + 1, operands.size() - (comma_index + 1));
+    operands = operands.substr(0, comma_index);
+
+    if(is_all_digits(operands) && is_all_digits(second_operand)){
+        opcode += 0xE;
+        first_extern_value = true;
+        second_extern_value = true;
+        opcode_first_value = atoi(operands.c_str());
+        opcode_second_value = -atoi(second_operand.c_str());
+        opcode += 0x60;
+        is_a_sum = true;
+    }else if(is_math_register(operands) && is_all_digits(second_operand)){
+        opcode += 0x60;
+        second_extern_value = true;
+        opcode_second_value = -atoi(second_operand.c_str());
+        is_a_sum = true;
+    }
+
+    if(!is_all_digits(operands))       operand_to_opcode(registers_first_operand, operands, opcode_first_value, line);
+    if(!is_all_digits(second_operand)) operand_to_opcode(registers_second_operand, second_operand, opcode_second_value, line);
+
+    if((opcode_first_value >> 2) == opcode_second_value){
+        printf("Error in line %ld, operation denied.\n", line);
+        exit(4);
+    }
+
+    if(!is_a_sum)opcode += 0xB0;
+
+    if(is_math_register(operands) && is_math_register(second_operand)) opcode += opcode_first_value + opcode_second_value;
+    else if(is_math_register(operands) && is_all_digits(second_operand)) opcode += opcode_first_value;
+    else if(is_all_digits(operands) && is_math_register(second_operand)){
+        opcode += opcode_second_value + (opcode_second_value << 2);
+        first_extern_value = true;
+        opcode_first_value = atoi(operands.c_str());
+    }
+
+    fwrite(&opcode, sizeof(uint8_t), 1, output);
+    PC++;
+
+    if(first_extern_value){
+        fwrite(&opcode_first_value, sizeof(uint8_t), 1, output);
+        PC++;
+    }
+
+    if(second_extern_value){
+        fwrite(&opcode_second_value, sizeof(uint8_t), 1, output);
+        PC++;
+    }
+
+
+    cout << PC-1 << ":" << instruction  << " " << operands << " " << second_operand << endl;
+
+}
+
+
+void div(string &instruction, size_t &line, size_t &PC, FILE* output){
+    uint8_t instruction_size = 3;
+    uint8_t comma_index = -1;
+    uint8_t opcode = 0;
+
+    int8_t opcode_first_value = 0;
+    int8_t opcode_second_value = 0;
+    bool first_extern_value = false;
+    bool second_extern_value = false;
+
+    string operands;
+    string second_operand;
+
+    operands = instruction.substr(instruction_size, instruction.size() - instruction_size - 1);
+    instruction = instruction.substr(0, instruction_size);
+
+
+    comma_index = operands.find(',');
+    if(operands.find(',') == string::npos){
+        printf("Error in line %ld, miss a comma (,)\n", line);
+        exit(2);
+    }
+
+    second_operand = operands.substr(comma_index + 1, operands.size() - (comma_index + 1));
+    operands = operands.substr(0, comma_index);   
+    
+    
+}
+
+void mod(string &instruction, size_t &line, size_t &PC, FILE* output){
+    uint8_t instruction_size = 3;
+    uint8_t comma_index = -1;
+    uint8_t opcode = 0;
+
+    int8_t opcode_first_value = 0;
+    int8_t opcode_second_value = 0;
+    bool first_extern_value = false;
+    bool second_extern_value = false;
+
+    string operands;
+    string second_operand;
+
+    operands = instruction.substr(instruction_size, instruction.size() - instruction_size - 1);
+    instruction = instruction.substr(0, instruction_size);
+
+
+    comma_index = operands.find(',');
+    if(operands.find(',') == string::npos){
+        printf("Error in line %ld, miss a comma (,)\n", line);
+        exit(2);
+    }
+
+    second_operand = operands.substr(comma_index + 1, operands.size() - (comma_index + 1));
+    operands = operands.substr(0, comma_index);
+
+
+}
+
+void b_not(string &instruction, size_t &line, size_t &PC, FILE* output);
+void comp(string &instruction, size_t &line, size_t &PC, FILE* output);
+
