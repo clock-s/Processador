@@ -231,8 +231,11 @@ begin
                 when DECODE =>
                     opcode <= instruction;
                     current_instruction <= instruction;  -- Save instruction for later use
-                    PC <= PC + 1;
                     report "DECODE: inst=" & to_string(instruction) & " opcode=" & to_string(instruction(7 downto 4));
+                    
+                    -- Increment PC here (will point to next byte)
+                    -- If instruction needs immediate value, PC will point to it
+                    PC <= PC + 1;
                     
                     -- Decode based on opcode nibbles
                     -- Upper nibble determines instruction type
@@ -458,15 +461,17 @@ begin
                 -- GET_VALUE1: Obter primeiro operando se necessário
                 when GET_VALUE1 =>
                     if needs_value1 = '1' then
-                        -- Read immediate value from ROM
+                        -- Read immediate value from ROM (PC already points to it from DECODE)
                         operand1 <= instruction;
-                        PC <= PC + 1;  -- Increment PC for immediate value
                         needs_value1 <= '0';
-                        report "GET_VALUE1: Lendo valor imediato da ROM: " & to_string(instruction) & " PC=" & integer'image(PC+1);
+                        report "GET_VALUE1: Lendo valor imediato da ROM: " & to_string(instruction) & " (PC já foi incrementado no DECODE)";
                         if needs_value2 = '1' then
+                            -- Need to read another immediate value
+                            PC <= PC + 1;  -- Now increment for next immediate value
                             rom_addr <= PC + 1;  -- Point to next immediate value
                             current_state <= GET_VALUE2;
                         else
+                            -- No more immediate values needed
                             current_state <= EXECUTE;
                         end if;
                     else
@@ -477,12 +482,13 @@ begin
                         operand1 <= math_read_data_a;
                         
                         if needs_value2 = '1' then
-                            rom_addr <= PC;  -- Point to immediate value
+                            -- Need to read immediate value for operand2
+                            rom_addr <= PC;  -- PC already points to immediate value
                             report "GET_VALUE1: Lendo math_regs[" & integer'image(to_integer(unsigned(current_instruction(3 downto 2)))) & "]=" &
                                    to_string(math_read_data_a);
                             current_state <= GET_VALUE2;
                         else
-                            -- Also get operand2 from math registers if not immediate
+                            -- Both operands from registers
                             operand2 <= math_read_data_b;
                             report "GET_VALUE1: OP1=math_regs[" & integer'image(to_integer(unsigned(current_instruction(3 downto 2)))) & "]=" &
                                    to_string(math_read_data_a) &
@@ -495,9 +501,8 @@ begin
                 -- GET_VALUE2: Obter segundo operando se necessário
                 when GET_VALUE2 =>
                     operand2 <= instruction;
-                    PC <= PC + 1;  -- Increment PC for immediate value
                     needs_value2 <= '0';
-                    report "GET_VALUE2: Lendo valor imediato da ROM: " & to_string(instruction) & " PC=" & integer'image(PC+1);
+                    report "GET_VALUE2: Lendo valor imediato da ROM: " & to_string(instruction) & " (PC já foi incrementado)";
                     current_state <= EXECUTE;
                 
                 -- EXECUTE: Executar operação
