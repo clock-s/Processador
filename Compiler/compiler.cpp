@@ -39,7 +39,7 @@ void comp(string &instruction, size_t &line, size_t &PC, FILE* output);
 void lshift(string &instruction, size_t &line, size_t &PC, FILE* output);
 void rshift(string &instruction, size_t &line, size_t &PC, FILE* output);
 
-bool jump_stacking(string &instruction, size_t &line, size_t &PC, FILE* output);
+bool jump_stacking(string &instruction, size_t &line, size_t &PC, FILE* output, bool first_time = false);
 
 
 
@@ -148,6 +148,69 @@ int main(int argc, char const *argv[]){
     char caracter = '-';
     string instruction;
     
+    //NOTA: NESSE COMPILADOR, ELE COMPILA O CÓDIGO DUAS VEZES, NA PRIMEIRA ELE VÊ TODOS OS ELEMENTOS 
+    //QUE CAUSAM JUMPS "-ALGUMA_COISA" E NA SEGUNDA É Q ELE UTILIZA OS JUMPS DE FATO
+
+    while(!feof(input_file)){
+
+        instruction.clear();
+        opcode = 0;
+
+        while(caracter != ';' && !feof(input_file)){
+            caracter = fgetc(input_file);
+            
+            if(caracter != ' ' && caracter != '\n' && caracter != '\n')
+                instruction.push_back(tolower(caracter));
+            //cout << instruction << endl;
+
+            if(caracter == '\n') line++;
+        }
+        
+        //line++;
+
+        caracter = '-';
+
+        //cout << "Lido: " << instruction << " => ";
+
+
+        if(instruction.size() > 1){
+            
+
+            
+            if(instruction.find("load") != string::npos)        load(instruction, line, PC, output_file);
+            else if(instruction.find("sum") != string::npos)    sum(instruction, line, PC, output_file);
+            else if(instruction.find("mult") != string::npos)   mult(instruction, line, PC, output_file);
+            else if(instruction.find("sub") != string::npos)    sub(instruction, line, PC, output_file);
+            else if(instruction.find("div") != string::npos)    div(instruction, line, PC, output_file);
+            else if(instruction.find("mod") != string::npos)    mod(instruction, line, PC, output_file);
+            else if(instruction.find("and") != string::npos)    b_and(instruction, line, PC, output_file);
+            else if(instruction.find("xor") != string::npos)    b_xor(instruction, line, PC, output_file);
+            else if(instruction.find("or") != string::npos)     b_or(instruction, line, PC, output_file);
+            else if(instruction.find("not") != string::npos)    b_not(instruction, line, PC, output_file);
+            else if(instruction.find("comp") != string::npos)   comp(instruction, line, PC, output_file);
+            else if(instruction.find("nop") != string::npos)    nop(instruction, line, PC, output_file);            
+            else if(instruction.find("lshift") != string::npos) lshift(instruction, line, PC, output_file);            
+            else if(instruction.find("rshift") != string::npos) rshift(instruction, line, PC, output_file);
+            else if(jump_stacking(instruction, line, PC, output_file, true)){}
+            else if(instruction.find("jump") != string::npos)   jump(instruction, line, PC, output_file, true);
+            else if(instruction.find("resf") != string::npos)   resf(instruction, line, PC, output_file);
+            else if(instruction.find("res") != string::npos)    res(instruction, line, PC, output_file);
+            else{
+                printf("Error in line %ld, this instruction doesn't exist!\n", line);
+                exit(5);
+            }
+
+
+        }
+
+    
+    
+
+    }
+
+
+    fseek(input_file, 0, SEEK_SET);
+    fseek(output_file, 0, SEEK_SET);
 
     while(!feof(input_file)){
 
@@ -205,6 +268,8 @@ int main(int argc, char const *argv[]){
     
 
     }
+
+   
 
 
     for(int i = 0 ; i < jumps_pointers.size() ; i++){
@@ -1013,20 +1078,23 @@ void rshift(string &instruction, size_t &line, size_t &PC, FILE* output){
 
 }
 
-bool jump_stacking(string &instruction, size_t &line, size_t &PC, FILE* output){
+bool jump_stacking(string &instruction, size_t &line, size_t &PC, FILE* output, bool first_time){
     if(instruction[0] != '-') return false;
 
     instruction = instruction.substr(1, instruction.size() - 2);
     cout << instruction << endl;
 
-    for(int i = 0 ; i < jumps_pointers.size() ; i++){
+    if(first_time){
+        for(int i = 0 ; i < jumps_pointers.size() ; i++){
         if(instruction == jumps_pointers[i].first){
-            printf("Error in line %ld, pointer %s already exist!\n", line, instruction.c_str());
-            exit(6);
+                printf("Error in line %ld, pointer %s already exist!\n", line, instruction.c_str());
+                exit(6);
+            }
         }
-    }
 
-    jumps_pointers.push_back({instruction, PC});
+        jumps_pointers.push_back({instruction, PC});
+    }
+    
     
 
     return true;
