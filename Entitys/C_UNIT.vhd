@@ -218,14 +218,18 @@ begin
                             decoded_operation <= "0000"; -- SUM operation
                             -- Check if needs immediate values
                             if instruction(3 downto 0) = "1110" then
+                                -- SUM V1, V2 (both immediate)
                                 needs_value1 <= '1';
                                 needs_value2 <= '1';
-                            elsif instruction(3 downto 0) = "1101" or 
-                                  (instruction(3 downto 2) = "00" and instruction(1 downto 0) /= "00") or
-                                  (instruction(3 downto 2) = "01" and instruction(1 downto 0) /= "01") or
-                                  (instruction(3 downto 2) = "10" and instruction(1 downto 0) /= "10") or
-                                  (instruction(3 downto 2) = "11" and instruction(1 downto 0) /= "11") then
+                            elsif instruction(3 downto 0) = "1101" then
+                                -- SUM x, V2 (x register, immediate)
                                 needs_value2 <= '1';
+                            elsif (instruction(3 downto 2) = instruction(1 downto 0)) then
+                                -- SUM x, x or SUM y, y etc (same register - uses only operand1)
+                                needs_value2 <= '0';
+                            else
+                                -- SUM x, y or SUM x, z etc (different registers - no immediate)
+                                needs_value2 <= '0';
                             end if;
                             current_state <= GET_VALUE1;
                         
@@ -233,14 +237,18 @@ begin
                         when "0111" =>
                             decoded_operation <= "0111"; -- MULT operation
                             if instruction(3 downto 0) = "1110" then
+                                -- MULT V1, V2 (both immediate)
                                 needs_value1 <= '1';
                                 needs_value2 <= '1';
-                            elsif instruction(3 downto 0) = "1101" or 
-                                  (instruction(3 downto 2) /= "00" and instruction(1 downto 0) = "00") or
-                                  (instruction(3 downto 2) /= "01" and instruction(1 downto 0) = "01") or
-                                  (instruction(3 downto 2) /= "10" and instruction(1 downto 0) = "10") or
-                                  (instruction(3 downto 2) /= "11" and instruction(1 downto 0) = "11") then
+                            elsif instruction(3 downto 0) = "1101" then
+                                -- MULT x, V2 (x register, immediate)
                                 needs_value2 <= '1';
+                            elsif (instruction(3 downto 2) = instruction(1 downto 0)) then
+                                -- MULT x, x (same register)
+                                needs_value2 <= '0';
+                            else
+                                -- MULT x, y (different registers)
+                                needs_value2 <= '0';
                             end if;
                             current_state <= GET_VALUE1;
                         
@@ -295,14 +303,21 @@ begin
                         -- 0xBX: SUB
                         when "1011" =>
                             decoded_operation <= "0001"; -- SUB operation
-                            if instruction(3 downto 2) /= instruction(1 downto 0) then
-                                -- Normal subtraction between registers
-                                current_state <= GET_VALUE1;
-                            else
-                                -- Subtraction with immediate value
+                            if instruction(3 downto 0) = "1110" then
+                                -- SUB V1, V2 (both immediate)
+                                needs_value1 <= '1';
                                 needs_value2 <= '1';
-                                current_state <= GET_VALUE1;
+                            elsif instruction(3 downto 0) = "1101" then
+                                -- SUB x, V2 (register, immediate)
+                                needs_value2 <= '1';
+                            elsif (instruction(3 downto 2) = instruction(1 downto 0)) then
+                                -- SUB x, x (same register)
+                                needs_value2 <= '0';
+                            else
+                                -- SUB x, y (different registers)
+                                needs_value2 <= '0';
                             end if;
+                            current_state <= GET_VALUE1;
                         
                         -- 0xCX: DIV/MOD or LSHIFT
                         when "1100" =>
