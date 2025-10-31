@@ -1,0 +1,6 @@
+LOAD r1,2;
+LOAD r2,3;
+LOAD x,r1;
+LOAD y,r2;
+SUM x,y;
+NOP;

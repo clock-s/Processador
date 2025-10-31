@@ -357,11 +357,14 @@ begin
                         end if;
                     else
                         -- Get value from math registers (x, y, z, w)
-                        operand1 <= math_regs(to_integer(unsigned(opcode(3 downto 2))));
+                        -- Use instruction bits, not opcode, since opcode only has upper 4 bits
+                        operand1 <= math_regs(to_integer(unsigned(instruction(3 downto 2))));
                         
                         if needs_value2 = '1' then
                             current_state <= GET_VALUE2;
                         else
+                            -- Also get operand2 from math registers if not immediate
+                            operand2 <= math_regs(to_integer(unsigned(instruction(1 downto 0))));
                             current_state <= EXECUTE;
                         end if;
                     end if;
@@ -406,11 +409,7 @@ begin
                     else
                         -- Setup ULA inputs for arithmetic/logic operations
                         ULA_A <= operand1;
-                        if needs_value2 = '1' or opcode(1 downto 0) /= opcode(3 downto 2) then
-                            ULA_B <= operand2;
-                        else
-                            ULA_B <= math_regs(to_integer(unsigned(opcode(1 downto 0))));
-                        end if;
+                        ULA_B <= operand2;
                         ULA_instruction <= decoded_operation;
                         ULA_permission <= '1';
                         wait_ula := '1';
