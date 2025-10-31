@@ -32,13 +32,23 @@ architecture C_UNIT_ARCH of C_UNIT is
     signal ULA_permission, ULA_finished, ULA_overflow : std_logic;
     signal ULA_instruction : std_logic_vector (3 downto 0);
     
-    -- Memory registers (r1, r2, r3, r4) - Implementados internamente
-    type mem_reg_array is array (0 to 3) of std_logic_vector(7 downto 0);
-    signal mem_regs : mem_reg_array := (others => (others => '0'));
+    -- Memory registers interface (r1, r2, r3, r4)
+    signal mem_write_enable : std_logic := '0';
+    signal mem_write_addr : integer range 0 to 3 := 0;
+    signal mem_write_data : std_logic_vector(7 downto 0) := (others => '0');
+    signal mem_read_addr_a : integer range 0 to 3 := 0;
+    signal mem_read_addr_b : integer range 0 to 3 := 0;
+    signal mem_read_data_a : std_logic_vector(7 downto 0);
+    signal mem_read_data_b : std_logic_vector(7 downto 0);
     
-    -- Math registers (x=0, y=1, z=2, w=3) - Separados dos memory registers
-    type math_reg_array is array (0 to 3) of std_logic_vector(7 downto 0);
-    signal math_regs : math_reg_array := (others => (others => '0'));
+    -- Math registers interface (x, y, z, w)
+    signal math_write_enable : std_logic := '0';
+    signal math_write_addr : integer range 0 to 3 := 0;
+    signal math_write_data : std_logic_vector(7 downto 0) := (others => '0');
+    signal math_read_addr_a : integer range 0 to 3 := 0;
+    signal math_read_addr_b : integer range 0 to 3 := 0;
+    signal math_read_data_a : std_logic_vector(7 downto 0);
+    signal math_read_data_b : std_logic_vector(7 downto 0);
     
     -- Flags register for COMP instruction
     signal flags_reg : std_logic_vector(7 downto 0) := (others => '0');
@@ -87,6 +97,32 @@ architecture C_UNIT_ARCH of C_UNIT is
         clock : in std_logic   
     );
     end component;
+    
+    component PACK_REGISTER_MEM is port(
+        clock : in std_logic;
+        reset : in std_logic;
+        write_enable : in std_logic;
+        write_addr : in integer range 0 to 3;
+        write_data : in std_logic_vector(7 downto 0);
+        read_addr_a : in integer range 0 to 3;
+        read_addr_b : in integer range 0 to 3;
+        read_data_a : out std_logic_vector(7 downto 0);
+        read_data_b : out std_logic_vector(7 downto 0)
+    );
+    end component;
+    
+    component PACK_REGISTER_MATH is port(
+        clock : in std_logic;
+        reset : in std_logic;
+        write_enable : in std_logic;
+        write_addr : in integer range 0 to 3;
+        write_data : in std_logic_vector(7 downto 0);
+        read_addr_a : in integer range 0 to 3;
+        read_addr_b : in integer range 0 to 3;
+        read_data_a : out std_logic_vector(7 downto 0);
+        read_data_b : out std_logic_vector(7 downto 0)
+    );
+    end component;
 
 begin
     
@@ -120,6 +156,32 @@ begin
         clock => active_clock  -- Use active_clock instead of clock
     );
     
+    -- Memory registers bank (r1, r2, r3, r4)
+    MEM_REGS : PACK_REGISTER_MEM port map (
+        clock => active_clock,
+        reset => reset,
+        write_enable => mem_write_enable,
+        write_addr => mem_write_addr,
+        write_data => mem_write_data,
+        read_addr_a => mem_read_addr_a,
+        read_addr_b => mem_read_addr_b,
+        read_data_a => mem_read_data_a,
+        read_data_b => mem_read_data_b
+    );
+    
+    -- Math registers bank (x, y, z, w)
+    MATH_REGS : PACK_REGISTER_MATH port map (
+        clock => active_clock,
+        reset => reset,
+        write_enable => math_write_enable,
+        write_addr => math_write_addr,
+        write_data => math_write_data,
+        read_addr_a => math_read_addr_a,
+        read_addr_b => math_read_addr_b,
+        read_data_a => math_read_data_a,
+        read_data_b => math_read_data_b
+    );
+    
     -- Debug outputs
     debug_pc <= PC;
     debug_state <= "000" when current_state = FETCH else
@@ -139,15 +201,19 @@ begin
         if reset = '1' then
             PC <= 0;
             current_state <= FETCH;
-            math_regs <= (others => (others => '0'));
-            mem_regs <= (others => (others => '0'));  -- Reset memory registers
             flags_reg <= (others => '0');
             acc_reg <= (others => '0');
             ma_reg <= 0;
             ULA_permission <= '0';
             rom_addr <= 0;
+            mem_write_enable <= '0';
+            math_write_enable <= '0';
             
         elsif rising_edge(active_clock) then
+            
+            -- Reset write enables at the start of each cycle
+            mem_write_enable <= '0';
+            math_write_enable <= '0';
             
             case current_state is
                 
@@ -176,9 +242,10 @@ begin
                         when "0000" =>
                             if instruction = "00000000" then
                                 current_state <= FETCH;
-                            -- 0x01: RES (reset registers)
+                            -- 0x01: RES (reset registers) - handled by pack registers reset
                             elsif instruction = "00000001" then
-                                math_regs <= (others => (others => '0'));
+                                -- Note: Cannot directly reset pack registers from here
+                                -- They reset with global reset signal
                                 current_state <= FETCH;
                             -- 0x02: RESF (reset flags)
                             elsif instruction = "00000010" then
@@ -194,17 +261,18 @@ begin
                         when "0001" =>
                             dest_reg <= to_integer(unsigned(instruction(3 downto 2)));
                             src_reg <= to_integer(unsigned(instruction(1 downto 0)));
-                            -- Read from internal memory register array (use direct indexing, not src_reg signal)
-                            operand1 <= mem_regs(to_integer(unsigned(instruction(1 downto 0))));
+                            -- Setup read from memory register
+                            mem_read_addr_a <= to_integer(unsigned(instruction(1 downto 0)));
+                            operand1 <= mem_read_data_a;  -- Will be available in next cycle
                             current_state <= EXECUTE;
                         
                         -- 0x2X: LOAD memory_reg <- math_reg
                         when "0010" =>
-                            src_reg <= to_integer(unsigned(instruction(3 downto 2)));
-                            dest_reg <= to_integer(unsigned(instruction(1 downto 0)));
-                            -- Write to internal memory register array (use direct indexing)
-                            mem_regs(to_integer(unsigned(instruction(1 downto 0)))) <= 
-                                math_regs(to_integer(unsigned(instruction(3 downto 2))));
+                            -- Setup write to memory register
+                            math_read_addr_a <= to_integer(unsigned(instruction(3 downto 2)));
+                            mem_write_enable <= '1';
+                            mem_write_addr <= to_integer(unsigned(instruction(1 downto 0)));
+                            mem_write_data <= math_read_data_a;
                             current_state <= FETCH;
                         
                         -- 0x3X: LOAD memory_reg <- memory_reg or value
@@ -213,12 +281,14 @@ begin
                             if instruction(1 downto 0) = instruction(3 downto 2) then
                                 -- Load immediate value
                                 needs_value1 <= '1';
+                                rom_addr <= PC;  -- Point to next byte
                                 current_state <= GET_VALUE1;
                             else
-                                -- Copy between memory registers (use direct indexing)
-                                src_reg <= to_integer(unsigned(instruction(1 downto 0)));
-                                mem_regs(to_integer(unsigned(instruction(3 downto 2)))) <= 
-                                    mem_regs(to_integer(unsigned(instruction(1 downto 0))));
+                                -- Copy between memory registers
+                                mem_read_addr_a <= to_integer(unsigned(instruction(1 downto 0)));
+                                mem_write_enable <= '1';
+                                mem_write_addr <= to_integer(unsigned(instruction(3 downto 2)));
+                                mem_write_data <= mem_read_data_a;
                                 current_state <= FETCH;
                             end if;
                         
@@ -388,12 +458,13 @@ begin
                 -- GET_VALUE1: Obter primeiro operando se necessário
                 when GET_VALUE1 =>
                     if needs_value1 = '1' then
-                        rom_addr <= PC;
-                        PC <= PC + 1;
+                        -- Read immediate value from ROM
                         operand1 <= instruction;
+                        PC <= PC + 1;  -- Increment PC for immediate value
                         needs_value1 <= '0';
-                        report "GET_VALUE1: Lendo valor imediato da ROM: " & to_string(instruction);
+                        report "GET_VALUE1: Lendo valor imediato da ROM: " & to_string(instruction) & " PC=" & integer'image(PC+1);
                         if needs_value2 = '1' then
+                            rom_addr <= PC + 1;  -- Point to next immediate value
                             current_state <= GET_VALUE2;
                         else
                             current_state <= EXECUTE;
@@ -401,30 +472,32 @@ begin
                     else
                         -- Get value from math registers (x, y, z, w)
                         -- Use current_instruction (saved in DECODE), not instruction from ROM
-                        operand1 <= math_regs(to_integer(unsigned(current_instruction(3 downto 2))));
+                        math_read_addr_a <= to_integer(unsigned(current_instruction(3 downto 2)));
+                        math_read_addr_b <= to_integer(unsigned(current_instruction(1 downto 0)));
+                        operand1 <= math_read_data_a;
                         
                         if needs_value2 = '1' then
+                            rom_addr <= PC;  -- Point to immediate value
                             report "GET_VALUE1: Lendo math_regs[" & integer'image(to_integer(unsigned(current_instruction(3 downto 2)))) & "]=" &
-                                   to_string(math_regs(to_integer(unsigned(current_instruction(3 downto 2)))));
+                                   to_string(math_read_data_a);
                             current_state <= GET_VALUE2;
                         else
                             -- Also get operand2 from math registers if not immediate
-                            operand2 <= math_regs(to_integer(unsigned(current_instruction(1 downto 0))));
+                            operand2 <= math_read_data_b;
                             report "GET_VALUE1: OP1=math_regs[" & integer'image(to_integer(unsigned(current_instruction(3 downto 2)))) & "]=" &
-                                   to_string(math_regs(to_integer(unsigned(current_instruction(3 downto 2))))) &
+                                   to_string(math_read_data_a) &
                                    " OP2=math_regs[" & integer'image(to_integer(unsigned(current_instruction(1 downto 0)))) & "]=" &
-                                   to_string(math_regs(to_integer(unsigned(current_instruction(1 downto 0)))));
+                                   to_string(math_read_data_b);
                             current_state <= EXECUTE;
                         end if;
                     end if;
                 
                 -- GET_VALUE2: Obter segundo operando se necessário
                 when GET_VALUE2 =>
-                    rom_addr <= PC;
-                    PC <= PC + 1;
                     operand2 <= instruction;
+                    PC <= PC + 1;  -- Increment PC for immediate value
                     needs_value2 <= '0';
-                    report "GET_VALUE2: Lendo valor imediato da ROM: " & to_string(instruction);
+                    report "GET_VALUE2: Lendo valor imediato da ROM: " & to_string(instruction) & " PC=" & integer'image(PC+1);
                     current_state <= EXECUTE;
                 
                 -- EXECUTE: Executar operação
@@ -450,13 +523,17 @@ begin
                         current_state <= FETCH;
                     elsif opcode(7 downto 4) = "0001" then
                         -- LOAD math_reg <- memory_reg (0x1X)
-                        -- operand1 already has the value from mem_regs
-                        math_regs(dest_reg) <= operand1;
+                        -- operand1 has the value from mem_regs
+                        math_write_enable <= '1';
+                        math_write_addr <= dest_reg;
+                        math_write_data <= operand1;
                         report "  -> LOAD math_regs[" & integer'image(dest_reg) & "] = " & to_string(operand1);
                         current_state <= FETCH;
                     elsif opcode(7 downto 4) = "0011" and needs_value1 = '0' then
                         -- LOAD memory_reg <- immediate value (0x3X)
-                        mem_regs(dest_reg) <= operand1;
+                        mem_write_enable <= '1';
+                        mem_write_addr <= dest_reg;
+                        mem_write_data <= operand1;
                         report "  -> LOAD mem_regs[" & integer'image(dest_reg) & "] = " & to_string(operand1);
                         current_state <= FETCH;
                     else
@@ -477,9 +554,10 @@ begin
                             -- Store result
                             acc_reg <= ULA_OUTPUT;
                             
-                            -- Update destination register based on instruction type
-                            -- Most operations write to math registers (x, y, z, w)
-                            math_regs(to_integer(unsigned(opcode(3 downto 2)))) <= ULA_OUTPUT;
+                            -- Update destination register in math registers
+                            math_write_enable <= '1';
+                            math_write_addr <= to_integer(unsigned(opcode(3 downto 2)));
+                            math_write_data <= ULA_OUTPUT;
                             
                             report "WRITE_BACK: math_regs[" & integer'image(to_integer(unsigned(opcode(3 downto 2)))) & "] = " & to_string(ULA_OUTPUT);
                             
