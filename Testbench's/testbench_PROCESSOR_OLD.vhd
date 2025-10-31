@@ -11,7 +11,6 @@ architecture tb_PROCESSOR of testbench_PROCESSOR is
     component C_UNIT is port(
         clock       : in  std_logic;
         reset       : in  std_logic;
-        use_internal_clock : in std_logic := '1';
         debug_pc    : out integer range 0 to 255;
         debug_state : out std_logic_vector(2 downto 0)
     );
@@ -20,7 +19,6 @@ architecture tb_PROCESSOR of testbench_PROCESSOR is
     -- Test signals
     signal clk : std_logic := '0';
     signal rst : std_logic := '1';
-    signal use_int_clk : std_logic := '1';
     signal pc_out : integer range 0 to 255;
     signal state_out : std_logic_vector(2 downto 0);
     
@@ -39,7 +37,6 @@ begin
     UUT: C_UNIT port map (
         clock => clk,
         reset => rst,
-        use_internal_clock => use_int_clk,
         debug_pc => pc_out,
         debug_state => state_out
     );
@@ -56,41 +53,26 @@ begin
         wait;
     end process;
     
-    -- Monitor process
+    -- Monitor process - exibe estado do processador
     monitor_process : process(clk)
         variable current_state_name : state_name_type;
-        variable state_str : string(1 to 11);
     begin
         if rising_edge(clk) then
             -- Decode state
             case state_out is
-                when "000" => 
-                    current_state_name := FETCH;
-                    state_str := "FETCH      ";
-                when "001" => 
-                    current_state_name := DECODE;
-                    state_str := "DECODE     ";
-                when "010" => 
-                    current_state_name := GET_VALUE1;
-                    state_str := "GET_VALUE1 ";
-                when "011" => 
-                    current_state_name := GET_VALUE2;
-                    state_str := "GET_VALUE2 ";
-                when "100" => 
-                    current_state_name := EXECUTE;
-                    state_str := "EXECUTE    ";
-                when "101" => 
-                    current_state_name := WRITE_BACK;
-                    state_str := "WRITE_BACK ";
-                when others => 
-                    current_state_name := HALT;
-                    state_str := "HALT       ";
+                when "000" => current_state_name := FETCH;
+                when "001" => current_state_name := DECODE;
+                when "010" => current_state_name := GET_VALUE1;
+                when "011" => current_state_name := GET_VALUE2;
+                when "100" => current_state_name := EXECUTE;
+                when "101" => current_state_name := WRITE_BACK;
+                when others => current_state_name := HALT;
             end case;
             
             -- Display current state and PC
             report "Clock " & integer'image(now / clk_period) & 
                    " | PC: " & integer'image(pc_out) & 
-                   " | State: " & state_str;
+                   " | State: " & state_name_type'image(current_state_name);
         end if;
     end process;
     
@@ -117,6 +99,7 @@ begin
         report "";
         
         -- Let processor run for enough cycles to complete the test program
+        -- Adjust this value based on your program size
         wait for clk_period * 200;
         
         report "";

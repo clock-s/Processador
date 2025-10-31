@@ -35,7 +35,7 @@ begin
     
     
   	report std_logic_vector'image(flag);
-    report std_logic_vector'image(s);
+    -- report std_logic_vector'image(s);  -- 's' não existe mais
     
     wait;
   end process;

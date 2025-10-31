@@ -8,7 +8,7 @@ end testbench_C_UNIT_standalone;
 architecture TB of testbench_C_UNIT_standalone is
     -- Signals
     signal reset : std_logic := '0';
-    signal use_internal_clock : std_logic := '1';
+    signal use_internal_clock : std_logic := '1';  -- Usar clock interno
     signal debug_pc : integer range 0 to 255;
     signal debug_state : std_logic_vector(2 downto 0);
     
@@ -30,7 +30,7 @@ begin
     
     -- Instantiate C_UNIT with internal clock
     DUT: C_UNIT port map (
-        clock => '0',
+        clock => '0',  -- Not used when use_internal_clock = '1'
         reset => reset,
         use_internal_clock => use_internal_clock,
         debug_pc => debug_pc,
@@ -60,28 +60,27 @@ begin
         -- Deixa executar por um tempo
         wait for 1000 ns;
         
-        report "=== TESTE CONCLUIDO ===";
+        report "=== TESTE CONCLUÍDO ===";
         report "Programa executado. Verifique os valores dos registradores.";
         
-        -- Finaliza simulacao
+        -- Finaliza simulação
         wait;
     end process TEST_PROC;
     
-    -- Monitor process
+    -- Monitor process - exibe informações a cada mudança de estado
     MONITOR: process(debug_state, debug_pc)
-        variable state_str : string(1 to 11);
     begin
+        report "PC=" & integer'image(debug_pc);
+        -- Estado exibido separadamente para evitar problemas de tipo
         case current_state_name is
-            when FETCH => state_str := "FETCH      ";
-            when DECODE => state_str := "DECODE     ";
-            when GET_VALUE1 => state_str := "GET_VALUE1 ";
-            when GET_VALUE2 => state_str := "GET_VALUE2 ";
-            when EXECUTE => state_str := "EXECUTE    ";
-            when WRITE_BACK => state_str := "WRITE_BACK ";
-            when HALT => state_str := "HALT       ";
+            when FETCH => report "  Estado: FETCH";
+            when DECODE => report "  Estado: DECODE";
+            when GET_VALUE1 => report "  Estado: GET_VALUE1";
+            when GET_VALUE2 => report "  Estado: GET_VALUE2";
+            when EXECUTE => report "  Estado: EXECUTE";
+            when WRITE_BACK => report "  Estado: WRITE_BACK";
+            when HALT => report "  Estado: HALT";
         end case;
-        
-        report "PC=" & integer'image(debug_pc) & " Estado: " & state_str;
     end process MONITOR;
     
 end TB;
