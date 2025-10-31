@@ -99,11 +99,11 @@ architecture ROM_ARCH of archive is
         -- Teste 12: Verificar copia entre memory registers
         60 => x"30",  -- LOAD r1, 77
         61 => x"4D",
-        62 => x"31",  -- LOAD r1, r2 (0x31: dest=00=r1, src=01=r2, copia r2→r1)
-        63 => x"36",  -- LOAD r2, r1 (0x36: dest=01=r2, src=10=r1+1, copia r1→r2)
+        62 => x"31",  -- LOAD r1, r1 (copia r1 para r1, deve manter 77)
+        63 => x"36",  -- LOAD r2, r1 (copia r1 para r2, r2=77)
         
         -- Final: NOP para encerrar
-        64 => x"00",  -- NOP (halt when PC > 64)
+        64 => x"00",  -- NOP (halt when PC > 10)
         
         others => x"00"
     );
