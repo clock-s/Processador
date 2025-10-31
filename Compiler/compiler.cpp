@@ -7,9 +7,9 @@
 using namespace std;
 
 
-
 map<string, uint8_t> registers_first_operand;
 map<string, uint8_t> registers_second_operand;
+
 
 const vector<string> memory_registers = {"r1", "r2", "r3" ,"r4"};
 const vector<string> math_registers = {"x", "y", "z" ,"w"};
@@ -346,16 +346,16 @@ void load(string &instruction, size_t &line, size_t &PC, FILE* output){
     
     if(!extern_value){
         opcode = opcode + opcode_first_value + opcode_second_value;
-        fwrite(&opcode, sizeof(uint8_t), 1, output); 
+        fprintf(output, "%02X\n", opcode); 
         PC++;
 
     }else{
         opcode = opcode + opcode_first_value + opcode_first_value/4;
-        fwrite(&opcode, sizeof(uint8_t), 1, output);
+        fprintf(output, "%02X\n", opcode);
         PC++;
         
         opcode = opcode_second_value;
-        fwrite(&opcode, sizeof(uint8_t), 1, output);
+        fprintf(output, "%02X\n", opcode);
         PC++;
     }
 
@@ -432,16 +432,16 @@ void sum(string &instruction, size_t &line, size_t &PC, FILE* output){
     }
     
 
-    fwrite(&opcode, sizeof(uint8_t), 1, output);
+    fprintf(output, "%02X\n", opcode);
     PC++;
 
     if(first_extern_value){
-        fwrite(&opcode_first_value, sizeof(uint8_t), 1, output);
+        fprintf(output, "%02X\n", opcode_first_value);
         PC++;
     }
 
     if(second_extern_value){
-        fwrite(&opcode_second_value, sizeof(uint8_t), 1, output);
+        fprintf(output, "%02X\n", opcode_second_value);
         PC++;
     }
 
@@ -520,16 +520,16 @@ void mult(string &instruction, size_t &line, size_t &PC, FILE* output){
     }
     
 
-    fwrite(&opcode, sizeof(uint8_t), 1, output);
+    fprintf(output, "%02X\n", opcode);
     PC++;
 
     if(first_extern_value){
-        fwrite(&opcode_first_value, sizeof(uint8_t), 1, output);
+        fprintf(output, "%02X\n", opcode_first_value);
         PC++;
     }
 
     if(second_extern_value){
-        fwrite(&opcode_second_value, sizeof(uint8_t), 1, output);
+        fprintf(output, "%02X\n", opcode_second_value);
         PC++;
     }
 
@@ -598,16 +598,16 @@ void sub(string &instruction, size_t &line, size_t &PC, FILE* output){
         opcode_first_value = atoi(operands.c_str());
     }
 
-    fwrite(&opcode, sizeof(uint8_t), 1, output);
+    fprintf(output, "%02X\n", opcode);
     PC++;
 
     if(first_extern_value){
-        fwrite(&opcode_first_value, sizeof(uint8_t), 1, output);
+        fprintf(output, "%02X\n", opcode_first_value);
         PC++;
     }
 
     if(second_extern_value){
-        fwrite(&opcode_second_value, sizeof(uint8_t), 1, output);
+        fprintf(output, "%02X\n", opcode_second_value);
         PC++;
     }
 
@@ -663,11 +663,11 @@ void div(string &instruction, size_t &line, size_t &PC, FILE* output){
 
 
 
-    fwrite(&opcode, sizeof(uint8_t), 1, output);
+    fprintf(output, "%02X\n", opcode);
     PC++;
 
     if(extern_value){
-        fwrite(&opcode_second_value, sizeof(uint8_t), 1, output);
+        fprintf(output, "%02X\n", opcode_second_value);
         PC++;
     }
 
@@ -723,11 +723,11 @@ void mod(string &instruction, size_t &line, size_t &PC, FILE* output){
 
 
 
-    fwrite(&opcode, sizeof(uint8_t), 1, output);
+    fprintf(output, "%02X\n", opcode);
     PC++;
 
     if(extern_value){
-        fwrite(&opcode_second_value, sizeof(uint8_t), 1, output);
+        fprintf(output, "%02X\n", opcode_second_value);
         PC++;
     }
 
@@ -797,11 +797,11 @@ void b_and(string &instruction, size_t &line, size_t &PC, FILE* output, uint8_t 
         exit(1);
     }
     
-    fwrite(&opcode, sizeof(uint8_t), 1, output);
+    fprintf(output, "%02X\n", opcode);
     PC++;
 
     if(extern_value){
-        fwrite(&opcode_second_value, sizeof(uint8_t), 1, output);
+        fprintf(output, "%02X\n", opcode_second_value);
         PC++;
     }
 
@@ -862,11 +862,11 @@ void b_not(string &instruction, size_t &line, size_t &PC, FILE* output){
         exit(1);
     }
 
-    fwrite(&opcode, sizeof(uint8_t), 1, output);
+    fprintf(output, "%02X\n", opcode);
     PC++;
 
     if(extern_value){
-        fwrite(&opcode_first_value, sizeof(uint8_t), 1, output);
+        fprintf(output, "%02X\n", opcode_first_value);
         PC++;
     }
 
@@ -886,7 +886,7 @@ void nop(string &instruction, size_t &line, size_t &PC, FILE* output){
         exit(5);
     }
 
-    fwrite(&opcode, sizeof(uint8_t), 1, output);
+    fprintf(output, "%02X\n", opcode);
     PC++;
 
     cout << PC-1 << ":" << instruction  << endl;
@@ -948,11 +948,11 @@ void lshift(string &instruction, size_t &line, size_t &PC, FILE* output){
         exit(4);
     }
 
-    fwrite(&opcode, sizeof(uint8_t), 1, output);
+    fprintf(output, "%02X\n", opcode);
     PC++;
 
     if(extern_value){
-        fwrite(&opcode_second_value, sizeof(uint8_t), 1, output);
+        fprintf(output, "%02X\n", opcode_second_value);
         PC++;
     }
 
@@ -1065,11 +1065,11 @@ void rshift(string &instruction, size_t &line, size_t &PC, FILE* output){
     }
 
 
-    fwrite(&opcode, sizeof(uint8_t), 1, output);
+    fprintf(output, "%02X\n", opcode);
     PC++;
 
     if(extern_value){
-        fwrite(&opcode_second_value, sizeof(uint8_t), 1, output);
+        fprintf(output, "%02X\n", opcode_second_value);
         PC++;
     }
 
@@ -1142,16 +1142,18 @@ void jump(string &instruction, size_t &line, size_t &PC, FILE* output, bool firs
     
 
     if(!first_time){
-        fwrite(&opcode, sizeof(uint8_t), 1, output);
+        fprintf(output, "%02X\n", opcode);
         PC++;
 
-        fwrite(&opcode_first_value, sizeof(uint8_t), 1, output);
+        fprintf(output, "%02X\n", opcode_first_value);
         PC++;
 
         if(extern_value){
             bool c = false;
             bool n = false;
             bool z = false;
+            bool p = false;
+            bool k = false;
 
             for(char flag : second_operand){
                 if(flag == 'c'){
@@ -1159,7 +1161,7 @@ void jump(string &instruction, size_t &line, size_t &PC, FILE* output, bool firs
                         printf("Error in line %ld, can't repeat flags.\n", line);
                         exit(8); 
                     }
-                    opcode_second_value +=4;
+                    opcode_second_value += 4;
                     c = true;
                 }
 
@@ -1168,7 +1170,7 @@ void jump(string &instruction, size_t &line, size_t &PC, FILE* output, bool firs
                         printf("Error in line %ld, can't repeat flags.\n", line);
                         exit(8); 
                     }
-                    opcode_second_value +=2;
+                    opcode_second_value += 2;
                     n = true;
                 }
 
@@ -1177,8 +1179,26 @@ void jump(string &instruction, size_t &line, size_t &PC, FILE* output, bool firs
                         printf("Error in line %ld, can't repeat flags.\n", line);
                         exit(8); 
                     }
-                    opcode_second_value +=1;
+                    opcode_second_value += 1;
                     z = true;
+                }
+
+                else if(flag == 'p'){
+                    if(p){
+                        printf("Error in line %ld, can't repeat flags.\n", line);
+                        exit(8); 
+                    }
+                    opcode_second_value += 128;
+                    p = true;
+                }
+
+                else if(flag == 'k'){
+                    if(k){
+                        printf("Error in line %ld, can't repeat flags.\n", line);
+                        exit(8); 
+                    }
+                    opcode_second_value += 8;
+                    k = true;
                 }
                 
                 else{
@@ -1187,12 +1207,12 @@ void jump(string &instruction, size_t &line, size_t &PC, FILE* output, bool firs
                 }
             }
 
-            if(!c && !n && !z){
+            if(!c && !n && !z && !p){
                 printf("Error in line %ld, syntaxe error, need a valid conditional flag.\n", line);
                 exit(8); 
             }
 
-            fwrite(&opcode_second_value, sizeof(uint8_t), 1, output);
+            fprintf(output, "%02X\n", opcode_second_value);
             PC++;
 
         }
@@ -1218,7 +1238,7 @@ void res(string &instruction, size_t &line, size_t &PC, FILE* output){
         exit(5);
     }
 
-    fwrite(&opcode, sizeof(uint8_t), 1, output);
+    fprintf(output, "%02X\n", opcode);
     PC++;
 
     cout << PC-1 << ":" << instruction  << endl;
@@ -1234,7 +1254,7 @@ void resf(string &instruction, size_t &line, size_t &PC, FILE* output){
         exit(5);
     }
 
-    fwrite(&opcode, sizeof(uint8_t), 1, output);
+    fprintf(output, "%02X\n", opcode);
     PC++;
 
     cout << PC-1 << ":" << instruction  << endl;

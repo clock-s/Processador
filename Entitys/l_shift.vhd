@@ -5,23 +5,23 @@ use work.functions.all;
 
 
 
-entity L_SHIFT_PORTS is port (
+entity R_SHIFT_PORTS is port (
 	output: out std_logic_vector (7 downto 0);
     carry : out std_logic;
     flag : out std_logic;
     
     
     input : in std_logic_vector (7 downto 0);
-    num_shift : in std_logic_vector (2 downto 0);
+    num_shift : in std_logic_vector (7 downto 0);
     clock : in std_logic;
 	reset : in std_logic
 );
-end L_SHIFT_PORTS;
+end R_SHIFT_PORTS;
 
 
 
 
-architecture L_SHIFT of L_SHIFT_PORTS is
+architecture R_SHIFT of R_SHIFT_PORTS is
 	signal temp_out : std_logic_vector (7 downto 0);
     signal temp_carry : std_logic;
 	signal flag_box : std_logic_vector (1 downto 0) := "00";
@@ -37,7 +37,7 @@ begin
         
         if reset = '1' then
         	flag_box <= "00";
-        
+        	contador <= 0; -- Precaução
         elsif rising_edge(clock) then
         
         	if flag_box(0) = '0' then
@@ -50,16 +50,16 @@ begin
             if flag_box(0) = '1' and flag_box(1) = '0' then
             
             	
-                if contador >= to_integer(num_shift) then
+                if contador >= to_integer(num_shift) or contador = 8 then
             		flag_box(1) <= '1';
             	
                 else
             	
-                  temp_out <= temp_out(6 downto 0) & '0';
+                  temp_out <= '0' & temp_out(7 downto 1);
 
-                  temp_carry <= temp_out(7);
+                  temp_carry <= temp_out(0);
 
-                  contador <= contador + 1;
+                  if contador /= 8 then  contador <= contador + 1; end if;
             
             	end if;
             
@@ -75,4 +75,4 @@ begin
 
 
 
-end L_SHIFT;
+end R_SHIFT;

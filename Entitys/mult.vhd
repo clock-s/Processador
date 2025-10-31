@@ -19,7 +19,7 @@ architecture MULT of MULT_PORTS is
 	signal flag_box : std_logic_vector (1 downto 0);
     signal A, B, C, aux : std_logic_vector (7 downto 0);
 	signal N_A, N_B, N_C : std_logic_vector (7 downto 0);
-    signal i : integer range 0 to 7;
+    signal i : integer range 0 to 8;
     signal carry_sum, carry_sum_temp : std_logic;
     
   
@@ -85,11 +85,24 @@ begin
                     	carry_sum <= '1';
                     end if;
                     
+                    if carry_sum_temp = '1' then
+                    	carry_sum <= '1';
+                   	else
+                    	carry_sum <= carry_sum;
+                    
+                    end if;
+                    
                     i <= i + 1;
                 end if;
                 
                 
                 
+            end if;
+            
+        	if flag_box(1) = '1' then
+                flag_box <= "00";
+                carry_sum <= '0';
+                i <= 0;
             end if;
         
         
