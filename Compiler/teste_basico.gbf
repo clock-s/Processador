@@ -1,0 +1,32 @@
+# Programa de teste básico para o processador
+# Testa operações aritméticas simples
+
+# Inicializa registradores
+RES;              # Reset todos os registradores matemáticos
+
+# Teste 1: Soma simples
+LOAD x, 10;       # x = 10
+LOAD y, 5;        # y = 5
+SUM x, y;         # x = x + y = 15
+LOAD r1, x;       # r1 = 15 (salva resultado)
+
+# Teste 2: Subtração
+LOAD x, 20;       # x = 20
+LOAD y, 8;        # y = 8
+SUB x, y;         # x = x - y = 12
+LOAD r2, x;       # r2 = 12
+
+# Teste 3: Multiplicação
+LOAD x, 6;        # x = 6
+LOAD y, 7;        # y = 7
+MULT x, y;        # x = x * y = 42
+LOAD r3, x;       # r3 = 42
+
+# Teste 4: Transferência entre registradores
+LOAD r4, r1;      # r4 = r1 = 15
+LOAD z, r4;       # z = r4 = 15
+
+# Loop simples para testar
+NOP;
+NOP;
+NOP;
