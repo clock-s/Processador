@@ -4,8 +4,9 @@ use ieee.numeric_std.all;
 
 
 entity C_UNIT is port(
-    clock : in std_logic;
-    reset : in std_logic;
+    clock : in std_logic := '0';  -- Clock externo (opcional)
+    reset : in std_logic := '0';
+    use_internal_clock : in std_logic := '1';  -- '1' = usar clock interno, '0' = usar clock externo
     
     -- Debug outputs (opcional)
     debug_pc : out integer range 0 to 255;
@@ -15,6 +16,10 @@ end C_UNIT;
 
 
 architecture C_UNIT_ARCH of C_UNIT is
+    -- Internal clock signal
+    signal internal_clock : std_logic := '0';
+    signal active_clock : std_logic;
+    
     -- Program Counter
     signal PC : integer range 0 to 255 := 0;
     
@@ -52,6 +57,7 @@ architecture C_UNIT_ARCH of C_UNIT is
     
     -- Decoded instruction fields
     signal opcode : std_logic_vector(7 downto 0);
+    signal current_instruction : std_logic_vector(7 downto 0);  -- Save current instruction
     signal decoded_operation : std_logic_vector(3 downto 0);
     signal operand1 : std_logic_vector(7 downto 0);
     signal operand2 : std_logic_vector(7 downto 0);
@@ -84,6 +90,22 @@ architecture C_UNIT_ARCH of C_UNIT is
 
 begin
     
+    -- Internal clock generator process
+    CLOCK_GEN: process
+    begin
+        if use_internal_clock = '1' then
+            internal_clock <= '0';
+            wait for 10 ns;
+            internal_clock <= '1';
+            wait for 10 ns;
+        else
+            wait;
+        end if;
+    end process CLOCK_GEN;
+    
+    -- Clock multiplexer: choose between internal and external clock
+    active_clock <= internal_clock when use_internal_clock = '1' else clock;
+    
     -- Component instantiation
     INTERNAL_MEMORY : archive port map (instruction, rom_addr);
     
@@ -95,7 +117,7 @@ begin
         B => ULA_B,
         permission => ULA_permission,
         instruction => ULA_instruction,
-        clock => clock
+        clock => active_clock  -- Use active_clock instead of clock
     );
     
     -- Debug outputs
@@ -109,7 +131,7 @@ begin
                    "111";
     
     -- Main control process
-    CONTROL_UNIT : process(clock, reset)
+    CONTROL_UNIT : process(active_clock, reset)
         variable fetch_count : integer := 0;
         variable wait_ula : std_logic := '0';
         variable temp_value : std_logic_vector(7 downto 0);
@@ -125,7 +147,7 @@ begin
             ULA_permission <= '0';
             rom_addr <= 0;
             
-        elsif rising_edge(clock) then
+        elsif rising_edge(active_clock) then
             
             case current_state is
                 
@@ -141,7 +163,9 @@ begin
                 -- DECODE: Decodificar instrução
                 when DECODE =>
                     opcode <= instruction;
+                    current_instruction <= instruction;  -- Save instruction for later use
                     PC <= PC + 1;
+                    report "inst: " & to_string(instruction);
                     
                     -- Decode based on opcode nibbles
                     -- Upper nibble determines instruction type
@@ -372,14 +396,18 @@ begin
                         end if;
                     else
                         -- Get value from math registers (x, y, z, w)
-                        -- Use instruction bits, not opcode, since opcode only has upper 4 bits
-                        operand1 <= math_regs(to_integer(unsigned(instruction(3 downto 2))));
+                        -- Use current_instruction (saved in DECODE), not instruction from ROM
+                        operand1 <= math_regs(to_integer(unsigned(current_instruction(3 downto 2))));
                         
                         if needs_value2 = '1' then
                             current_state <= GET_VALUE2;
                         else
                             -- Also get operand2 from math registers if not immediate
-                            operand2 <= math_regs(to_integer(unsigned(instruction(1 downto 0))));
+                            operand2 <= math_regs(to_integer(unsigned(current_instruction(1 downto 0))));
+                            report "OP1_idx=" & integer'image(to_integer(unsigned(current_instruction(3 downto 2)))) &
+                                   " OP2_idx=" & integer'image(to_integer(unsigned(current_instruction(1 downto 0)))) &
+                                   " math_regs(0)=" & to_string(math_regs(0)) &
+                                   " math_regs(1)=" & to_string(math_regs(1));
                             current_state <= EXECUTE;
                         end if;
                     end if;
@@ -428,6 +456,8 @@ begin
                         ULA_instruction <= decoded_operation;
                         ULA_permission <= '1';
                         wait_ula := '1';
+                        report "ULA_A=" & to_string(operand1) & " ULA_B=" & to_string(operand2) & 
+                               " ULA_op=" & to_string(decoded_operation);
                         current_state <= WRITE_BACK;
                     end if;
                 
@@ -441,6 +471,8 @@ begin
                             -- Update destination register based on instruction type
                             -- Most operations write to math registers (x, y, z, w)
                             math_regs(to_integer(unsigned(opcode(3 downto 2)))) <= ULA_OUTPUT;
+                            
+                            report "ULA: " & to_string(ULA_OUTPUT);
                             
                             -- Update flags
                             if ULA_OUTPUT = "00000000" then
