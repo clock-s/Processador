@@ -225,13 +225,13 @@ begin
                     needs_value1 <= '0';
                     needs_value2 <= '0';
                     is_jump <= '0';
-                    report "=== FETCH: PC=" & integer'image(PC) & " ===";
+                    -- report "=== FETCH: PC=" & integer'image(PC) & " ===";
                 
                 -- DECODE: Decodificar instrução
                 when DECODE =>
                     opcode <= instruction;
                     current_instruction <= instruction;  -- Save instruction for later use
-                    report "DECODE: inst=" & to_string(instruction) & " opcode=" & to_string(instruction(7 downto 4));
+                    -- report "DECODE: inst=" & integer'image(to_integer(unsigned(instruction)));
                     
                     -- Increment PC here (will point to next byte)
                     -- If instruction needs immediate value, PC will point to it
@@ -464,7 +464,7 @@ begin
                         -- Read immediate value from ROM (PC already points to it from DECODE)
                         operand1 <= instruction;
                         needs_value1 <= '0';
-                        report "GET_VALUE1: Lendo valor imediato da ROM: " & to_string(instruction) & " (PC já foi incrementado no DECODE)";
+                        -- report "GET_VALUE1: Lendo valor imediato";
                         if needs_value2 = '1' then
                             -- Need to read another immediate value
                             PC <= PC + 1;  -- Now increment for next immediate value
@@ -484,16 +484,12 @@ begin
                         if needs_value2 = '1' then
                             -- Need to read immediate value for operand2
                             rom_addr <= PC;  -- PC already points to immediate value
-                            report "GET_VALUE1: Lendo math_regs[" & integer'image(to_integer(unsigned(current_instruction(3 downto 2)))) & "]=" &
-                                   to_string(math_read_data_a);
+                            -- report "GET_VALUE1: Lendo de registrador";
                             current_state <= GET_VALUE2;
                         else
                             -- Both operands from registers
                             operand2 <= math_read_data_b;
-                            report "GET_VALUE1: OP1=math_regs[" & integer'image(to_integer(unsigned(current_instruction(3 downto 2)))) & "]=" &
-                                   to_string(math_read_data_a) &
-                                   " OP2=math_regs[" & integer'image(to_integer(unsigned(current_instruction(1 downto 0)))) & "]=" &
-                                   to_string(math_read_data_b);
+                            -- report "GET_VALUE1: Ambos operandos de registradores";
                             current_state <= EXECUTE;
                         end if;
                     end if;
@@ -502,12 +498,12 @@ begin
                 when GET_VALUE2 =>
                     operand2 <= instruction;
                     needs_value2 <= '0';
-                    report "GET_VALUE2: Lendo valor imediato da ROM: " & to_string(instruction) & " (PC já foi incrementado)";
+                    -- report "GET_VALUE2: Lendo valor imediato";
                     current_state <= EXECUTE;
                 
                 -- EXECUTE: Executar operação
                 when EXECUTE =>
-                    report ">>> EXECUTE: opcode=" & to_string(opcode) & " operand1=" & to_string(operand1) & " operand2=" & to_string(operand2);
+                    -- report ">>> EXECUTE";
                     if is_jump = '1' then
                         -- Handle jump
                         jump_addr <= to_integer(unsigned(operand1));
@@ -532,14 +528,14 @@ begin
                         math_write_enable <= '1';
                         math_write_addr <= dest_reg;
                         math_write_data <= operand1;
-                        report "  -> LOAD math_regs[" & integer'image(dest_reg) & "] = " & to_string(operand1);
+                        -- report "  -> LOAD math_regs";
                         current_state <= FETCH;
                     elsif opcode(7 downto 4) = "0011" and needs_value1 = '0' then
                         -- LOAD memory_reg <- immediate value (0x3X)
                         mem_write_enable <= '1';
                         mem_write_addr <= dest_reg;
                         mem_write_data <= operand1;
-                        report "  -> LOAD mem_regs[" & integer'image(dest_reg) & "] = " & to_string(operand1);
+                        -- report "  -> LOAD mem_regs";
                         current_state <= FETCH;
                     else
                         -- Setup ULA inputs for arithmetic/logic operations
@@ -548,7 +544,7 @@ begin
                         ULA_instruction <= decoded_operation;
                         ULA_permission <= '1';
                         wait_ula := '1';
-                        report "  -> ULA: A=" & to_string(operand1) & " B=" & to_string(operand2) & " OP=" & to_string(decoded_operation);
+                        -- report "  -> ULA";
                         current_state <= WRITE_BACK;
                     end if;
                 
@@ -564,7 +560,7 @@ begin
                             math_write_addr <= to_integer(unsigned(opcode(3 downto 2)));
                             math_write_data <= ULA_OUTPUT;
                             
-                            report "WRITE_BACK: math_regs[" & integer'image(to_integer(unsigned(opcode(3 downto 2)))) & "] = " & to_string(ULA_OUTPUT);
+                            -- report "WRITE_BACK: resultado escrito";
                             
                             -- Update flags
                             if ULA_OUTPUT = "00000000" then

@@ -17,13 +17,13 @@ component COMPARE is port (
 );
 end component;
 
-signal A_in, B_in, s: std_logic_vector(7 downto 0);
+signal A_in, B_in: std_logic_vector(7 downto 0);
 signal flag : std_logic_vector (3 downto 0);
 
 begin
 
   -- Connect DUT
-  DUT: COMPARE port map(flag, s,A_in, B_in);
+  DUT: COMPARE port map(flag, A_in, B_in);
 	
   process
   begin
