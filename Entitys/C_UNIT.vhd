@@ -27,13 +27,11 @@ architecture C_UNIT_ARCH of C_UNIT is
     signal ULA_permission, ULA_finished, ULA_overflow : std_logic;
     signal ULA_instruction : std_logic_vector (3 downto 0);
     
-    -- Register bank interface (4 registradores de memória: r1, r2, r3, r4)
-    signal reg_data : std_logic_vector (7 downto 0);
-    signal reg_addr : std_logic_vector (1 downto 0);
-    signal reg_write_read : std_logic; -- 0 = read, 1 = write
-    signal reg_reset : std_logic;
+    -- Memory registers (r1, r2, r3, r4) - Implementados internamente
+    type mem_reg_array is array (0 to 3) of std_logic_vector(7 downto 0);
+    signal mem_regs : mem_reg_array := (others => (others => '0'));
     
-    -- Math registers (x=0, y=1, z=2, w=3)
+    -- Math registers (x=0, y=1, z=2, w=3) - Separados dos memory registers
     type math_reg_array is array (0 to 3) of std_logic_vector(7 downto 0);
     signal math_regs : math_reg_array := (others => (others => '0'));
     
@@ -83,15 +81,6 @@ architecture C_UNIT_ARCH of C_UNIT is
         clock : in std_logic   
     );
     end component;
-    
-    component PACK_REGISTERS_PORTS is port(
-        clock      : in std_logic;
-        reset      : in std_logic;
-        write_read : in std_logic;
-        addr       : in std_logic_vector (1 downto 0);
-        data       : inout std_logic_vector (7 downto 0)
-    );
-    end component;
 
 begin
     
@@ -107,14 +96,6 @@ begin
         permission => ULA_permission,
         instruction => ULA_instruction,
         clock => clock
-    );
-    
-    REGISTER_BANK : PACK_REGISTERS_PORTS port map (
-        clock => clock,
-        reset => reg_reset,
-        write_read => reg_write_read,
-        addr => reg_addr,
-        data => reg_data
     );
     
     -- Debug outputs
@@ -137,11 +118,11 @@ begin
             PC <= 0;
             current_state <= FETCH;
             math_regs <= (others => (others => '0'));
+            mem_regs <= (others => (others => '0'));  -- Reset memory registers
             flags_reg <= (others => '0');
             acc_reg <= (others => '0');
             ma_reg <= 0;
             ULA_permission <= '0';
-            reg_reset <= '1';
             rom_addr <= 0;
             
         elsif rising_edge(clock) then
@@ -152,7 +133,6 @@ begin
                 when FETCH =>
                     rom_addr <= PC;
                     ULA_permission <= '0';
-                    reg_write_read <= '0'; -- Read mode
                     current_state <= DECODE;
                     needs_value1 <= '0';
                     needs_value2 <= '0';
@@ -189,21 +169,17 @@ begin
                         when "0001" =>
                             dest_reg <= to_integer(unsigned(instruction(3 downto 2)));
                             src_reg <= to_integer(unsigned(instruction(1 downto 0)));
-                            -- Read from memory register
-                            reg_addr <= instruction(1 downto 0);
-                            reg_write_read <= '0'; -- Read
-                            current_state <= GET_VALUE1;
+                            -- Read from internal memory register array
+                            operand1 <= mem_regs(src_reg);
+                            current_state <= EXECUTE;
                         
                         -- 0x2X: LOAD memory_reg <- math_reg
                         when "0010" =>
                             src_reg <= to_integer(unsigned(instruction(3 downto 2)));
                             dest_reg <= to_integer(unsigned(instruction(1 downto 0)));
-                            temp_value := math_regs(src_reg);
-                            -- Write to memory register
-                            reg_addr <= instruction(1 downto 0);
-                            reg_data <= temp_value;
-                            reg_write_read <= '1'; -- Write
-                            current_state <= WRITE_BACK;
+                            -- Write to internal memory register array
+                            mem_regs(dest_reg) <= math_regs(src_reg);
+                            current_state <= FETCH;
                         
                         -- 0x3X: LOAD memory_reg <- memory_reg or value
                         when "0011" =>
@@ -213,11 +189,10 @@ begin
                                 needs_value1 <= '1';
                                 current_state <= GET_VALUE1;
                             else
-                                -- Copy between memory registers
+                                -- Copy between memory registers (interno)
                                 src_reg <= to_integer(unsigned(instruction(1 downto 0)));
-                                reg_addr <= instruction(1 downto 0);
-                                reg_write_read <= '0';
-                                current_state <= GET_VALUE1;
+                                mem_regs(dest_reg) <= mem_regs(src_reg);
+                                current_state <= FETCH;
                             end if;
                         
                         -- 0x4X: LOAD with special registers (a, ma, [ma])
@@ -381,16 +356,8 @@ begin
                             current_state <= EXECUTE;
                         end if;
                     else
-                        -- Get value from register or other source
-                        if opcode(7 downto 4) = "0001" then
-                            -- Reading from register bank, data should be ready
-                            operand1 <= reg_data;
-                        elsif opcode(7 downto 4) = "0011" then
-                            operand1 <= reg_data;
-                        else
-                            -- Get from math registers
-                            operand1 <= math_regs(to_integer(unsigned(opcode(3 downto 2))));
-                        end if;
+                        -- Get value from math registers (x, y, z, w)
+                        operand1 <= math_regs(to_integer(unsigned(opcode(3 downto 2))));
                         
                         if needs_value2 = '1' then
                             current_state <= GET_VALUE2;
@@ -427,8 +394,17 @@ begin
                             PC <= jump_addr;
                         end if;
                         current_state <= FETCH;
+                    elsif opcode(7 downto 4) = "0001" then
+                        -- LOAD math_reg <- memory_reg (0x1X)
+                        -- operand1 already has the value from mem_regs
+                        math_regs(dest_reg) <= operand1;
+                        current_state <= FETCH;
+                    elsif opcode(7 downto 4) = "0011" and needs_value1 = '0' then
+                        -- LOAD memory_reg <- immediate value (0x3X)
+                        mem_regs(dest_reg) <= operand1;
+                        current_state <= FETCH;
                     else
-                        -- Setup ULA inputs
+                        -- Setup ULA inputs for arithmetic/logic operations
                         ULA_A <= operand1;
                         if needs_value2 = '1' or opcode(1 downto 0) /= opcode(3 downto 2) then
                             ULA_B <= operand2;
@@ -448,22 +424,9 @@ begin
                             -- Store result
                             acc_reg <= ULA_OUTPUT;
                             
-                            -- Update destination register
-                            if opcode(7 downto 4) = "0001" then
-                                -- Write to math register
-                                math_regs(dest_reg) <= ULA_OUTPUT;
-                            elsif opcode(7 downto 4) = "0010" then
-                                -- Already written to memory register
-                                null;
-                            elsif opcode(7 downto 4) = "0011" then
-                                -- Write to memory register
-                                reg_addr <= std_logic_vector(to_unsigned(dest_reg, 2));
-                                reg_data <= ULA_OUTPUT;
-                                reg_write_read <= '1';
-                            else
-                                -- Write to math register based on opcode
-                                math_regs(to_integer(unsigned(opcode(3 downto 2)))) <= ULA_OUTPUT;
-                            end if;
+                            -- Update destination register based on instruction type
+                            -- Most operations write to math registers (x, y, z, w)
+                            math_regs(to_integer(unsigned(opcode(3 downto 2)))) <= ULA_OUTPUT;
                             
                             -- Update flags
                             if ULA_OUTPUT = "00000000" then
