@@ -2,26 +2,26 @@
 #include <cstdint>
 #include <map>
 #include <cctype>
+#include <vector>
 
 using namespace std;
 
-#define MEMORY_REGISTER_SIZE 4
-#define MATH_REGISTER_SIZE MEMORY_REGISTER_SIZE
-#define SPECIAL_REGISTER_SIZE 2
 
 
 map<string, uint8_t> registers_first_operand;
 map<string, uint8_t> registers_second_operand;
 
-const string memory_registers[] = {"r1", "r2", "r3" ,"r4"};
-const string math_registers[] = {"x", "y", "z" ,"w"};
-const string special_registers[] = {"a","ma"};
-const string memory = "[ma]";
+const vector<string> memory_registers = {"r1", "r2", "r3" ,"r4"};
+const vector<string> math_registers = {"x", "y", "z" ,"w"};
+const vector<string> special_registers = {"a","ma", "[ma]"};
+vector<pair<string, uint8_t>> jumps_pointers; 
 
 void nop(string &instruction, size_t &line, size_t &PC, FILE* output);
+void res(string &instruction, size_t &line, size_t &PC, FILE* output);
+void resf(string &instruction, size_t &line, size_t &PC, FILE* output);
 
 void load(string &instruction, size_t &line, size_t &PC, FILE* output);
-void jump(string &instruction, size_t &line, size_t &PC, FILE* output);
+void jump(string &instruction, size_t &line, size_t &PC, FILE* output, bool first_time = false);
 
 void sum(string &instruction, size_t &line, size_t &PC, FILE* output);
 void mult(string &instruction, size_t &line, size_t &PC, FILE* output);
@@ -39,6 +39,7 @@ void comp(string &instruction, size_t &line, size_t &PC, FILE* output);
 void lshift(string &instruction, size_t &line, size_t &PC, FILE* output);
 void rshift(string &instruction, size_t &line, size_t &PC, FILE* output);
 
+bool jump_stacking(string &instruction, size_t &line, size_t &PC, FILE* output);
 
 
 
@@ -55,21 +56,21 @@ bool is_all_digits(string s){
 }
 
 bool is_memory_register(string s){
-    for(int i = 0 ; i < MEMORY_REGISTER_SIZE ; i++){
+    for(int i = 0 ; i < memory_registers.size() ; i++){
         if(s == memory_registers[i]) return true;
     }
     return false;
 }
 
 bool is_math_register(string s){
-     for(int i = 0 ; i < MATH_REGISTER_SIZE ; i++){
+     for(int i = 0 ; i < math_registers.size() ; i++){
         if(s == math_registers[i]) return true;
     }
     return false;
 }
 
 bool is_special_register(string s){
-    for(int i = 0 ; i < SPECIAL_REGISTER_SIZE ; i++){
+    for(int i = 0 ; i < special_registers.size() ; i++){
         if(s == special_registers[i]) return true;
     }
     return false;
@@ -141,7 +142,7 @@ int main(int argc, char const *argv[]){
    
 
     size_t PC = 0;
-    size_t line = 0;
+    size_t line = 1;
 
 
     char caracter = '-';
@@ -159,9 +160,11 @@ int main(int argc, char const *argv[]){
             if(caracter != ' ' && caracter != '\n' && caracter != '\n')
                 instruction.push_back(tolower(caracter));
             //cout << instruction << endl;
+
+            if(caracter == '\n') line++;
         }
         
-        line++;
+        //line++;
 
         caracter = '-';
 
@@ -172,18 +175,24 @@ int main(int argc, char const *argv[]){
             
 
             
-            if(instruction.find("load") != string::npos)       load(instruction, line, PC, output_file);
-            else if(instruction.find("sum") != string::npos)   sum(instruction, line, PC, output_file);
-            else if(instruction.find("mult") != string::npos)  mult(instruction, line, PC, output_file);
-            else if(instruction.find("sub") != string::npos)   sub(instruction, line, PC, output_file);
-            else if(instruction.find("div") != string::npos)   div(instruction, line, PC, output_file);
-            else if(instruction.find("mod") != string::npos)   mod(instruction, line, PC, output_file);
-            else if(instruction.find("and") != string::npos)   b_and(instruction, line, PC, output_file);
-            else if(instruction.find("xor") != string::npos)   b_xor(instruction, line, PC, output_file);
-            else if(instruction.find("or") != string::npos)    b_or(instruction, line, PC, output_file);
-            else if(instruction.find("not") != string::npos)   b_not(instruction, line, PC, output_file);
-            else if(instruction.find("comp") != string::npos)  comp(instruction, line, PC, output_file);
-            else if(instruction.find("nop") != string::npos)  nop(instruction, line, PC, output_file);            
+            if(instruction.find("load") != string::npos)        load(instruction, line, PC, output_file);
+            else if(instruction.find("sum") != string::npos)    sum(instruction, line, PC, output_file);
+            else if(instruction.find("mult") != string::npos)   mult(instruction, line, PC, output_file);
+            else if(instruction.find("sub") != string::npos)    sub(instruction, line, PC, output_file);
+            else if(instruction.find("div") != string::npos)    div(instruction, line, PC, output_file);
+            else if(instruction.find("mod") != string::npos)    mod(instruction, line, PC, output_file);
+            else if(instruction.find("and") != string::npos)    b_and(instruction, line, PC, output_file);
+            else if(instruction.find("xor") != string::npos)    b_xor(instruction, line, PC, output_file);
+            else if(instruction.find("or") != string::npos)     b_or(instruction, line, PC, output_file);
+            else if(instruction.find("not") != string::npos)    b_not(instruction, line, PC, output_file);
+            else if(instruction.find("comp") != string::npos)   comp(instruction, line, PC, output_file);
+            else if(instruction.find("nop") != string::npos)    nop(instruction, line, PC, output_file);            
+            else if(instruction.find("lshift") != string::npos) lshift(instruction, line, PC, output_file);            
+            else if(instruction.find("rshift") != string::npos) rshift(instruction, line, PC, output_file);
+            else if(jump_stacking(instruction, line, PC, output_file)){}
+            else if(instruction.find("jump") != string::npos)   jump(instruction, line, PC, output_file);
+            else if(instruction.find("resf") != string::npos)   resf(instruction, line, PC, output_file);
+            else if(instruction.find("res") != string::npos)    res(instruction, line, PC, output_file);
             else{
                 printf("Error in line %ld, this instruction doesn't exist!\n", line);
                 exit(5);
@@ -197,6 +206,10 @@ int main(int argc, char const *argv[]){
 
     }
 
+
+    for(int i = 0 ; i < jumps_pointers.size() ; i++){
+        printf("%s %d\n", jumps_pointers[i].first.c_str(), jumps_pointers[i].second);
+    }
 
 
     fclose(input_file);
@@ -882,4 +895,279 @@ void lshift(string &instruction, size_t &line, size_t &PC, FILE* output){
 
 
 }
-void rshift(string &instruction, size_t &line, size_t &PC, FILE* output);
+
+//RSHIFT
+void rshift(string &instruction, size_t &line, size_t &PC, FILE* output){
+    uint8_t instruction_size = 6;
+    uint8_t comma_index = -1;
+    uint8_t opcode = 0;
+
+    int8_t opcode_first_value = 0;
+    int8_t opcode_second_value = 0;
+    bool extern_value = false;
+
+    string operands;
+    string second_operand;
+
+    operands = instruction.substr(instruction_size, instruction.size() - instruction_size - 1);
+    instruction = instruction.substr(0, instruction_size);
+
+
+    comma_index = operands.find(',');
+    if(operands.find(',') == string::npos){
+        printf("Error in line %ld, miss a comma (,)\n", line);
+        exit(2);
+    }
+
+    second_operand = operands.substr(comma_index + 1, operands.size() - (comma_index + 1));
+    operands = operands.substr(0, comma_index);   
+    
+    
+    if(is_all_digits(operands)){
+        printf("Error in line %ld, operation denied.\n", line);
+        exit(4);
+    } 
+    else if(is_math_register(operands)){
+        if(operands == math_registers[0]){ //x
+            if(is_math_register(second_operand)){
+                if(second_operand == math_registers[0]) opcode = 0x94;      //xx
+                else if(second_operand == math_registers[1]) opcode = 0x98; //xy
+                else if(second_operand == math_registers[2]) opcode = 0x99; //xz
+                else if(second_operand == math_registers[3]) opcode = 0x9C; //xw
+                else{
+                    printf("Error in line %ld, incorrect operand or instruction.\n", line);
+                    exit(3); 
+                }
+            }
+            if(is_all_digits(second_operand)){
+                opcode = 0x9D;
+                extern_value = true;
+                opcode_second_value = atoi(second_operand.c_str());
+            }
+        }else if(operands == math_registers[1]){ //y
+            if(is_math_register(second_operand)){
+                if(second_operand == math_registers[0]) opcode = 0x9E;      //yx
+                else if(second_operand == math_registers[1]) opcode = 0xA4; //yy
+                else if(second_operand == math_registers[2]) opcode = 0xA8; //yz
+                else if(second_operand == math_registers[3]) opcode = 0xA9; //yw
+                else{
+                    printf("Error in line %ld, incorrect operand or instruction.\n", line);
+                    exit(3); 
+                }
+            }
+            if(is_all_digits(second_operand)){
+                opcode = 0xAC;
+                extern_value = true;
+                opcode_second_value = atoi(second_operand.c_str());
+            }
+        }else if(operands == math_registers[2]){ //z
+            if(is_math_register(second_operand)){
+                if(second_operand == math_registers[0]) opcode = 0xAD;      //zx
+                else if(second_operand == math_registers[1]) opcode = 0xAE; //zy
+                else if(second_operand == math_registers[2]) opcode = 0xCD; //zz
+                else if(second_operand == math_registers[3]) opcode = 0xCE; //zw
+                else{
+                    printf("Error in line %ld, incorrect operand or instruction.\n", line);
+                    exit(3); 
+                }
+            }
+            if(is_all_digits(second_operand)){
+                opcode = 0x8E;
+                extern_value = true;
+                opcode_second_value = atoi(second_operand.c_str());
+            }
+        }else if(operands == math_registers[3]){//w
+            if(is_math_register(second_operand)){
+                if(second_operand == math_registers[0]) opcode = 0x69;      //wx
+                else if(second_operand == math_registers[1]) opcode = 0x79; //wy
+                else if(second_operand == math_registers[2]) opcode = 0x5D; //wz
+                else if(second_operand == math_registers[3]) opcode = 0x5E; //ww
+                else{
+                    printf("Error in line %ld, incorrect operand or instruction.\n", line);
+                    exit(3); 
+                }
+            }
+            if(is_all_digits(second_operand)){
+                opcode = 0x5F;
+                extern_value = true;
+                opcode_second_value = atoi(second_operand.c_str());
+            }
+        }
+
+    }else{
+            printf("Error in line %ld, incorrect operand or instruction.\n", line);
+            exit(3); 
+    }
+
+
+    fwrite(&opcode, sizeof(uint8_t), 1, output);
+    PC++;
+
+    if(extern_value){
+        fwrite(&opcode_second_value, sizeof(uint8_t), 1, output);
+        PC++;
+    }
+
+    cout << PC-1 << ":" << instruction  << " " << operands << " " << second_operand << endl;
+
+
+}
+
+bool jump_stacking(string &instruction, size_t &line, size_t &PC, FILE* output){
+    if(instruction[0] != '-') return false;
+
+    instruction = instruction.substr(1, instruction.size() - 2);
+    cout << instruction << endl;
+
+    for(int i = 0 ; i < jumps_pointers.size() ; i++){
+        if(instruction == jumps_pointers[i].first){
+            printf("Error in line %ld, pointer %s already exist!\n", line, instruction.c_str());
+            exit(6);
+        }
+    }
+
+    jumps_pointers.push_back({instruction, PC});
+    
+
+    return true;
+}
+
+void jump(string &instruction, size_t &line, size_t &PC, FILE* output, bool first_time){
+    uint8_t instruction_size = 4;
+    uint8_t comma_index = -1;
+    uint8_t opcode = 0;
+
+    int8_t opcode_first_value = 0;
+    int8_t opcode_second_value = 0;
+    bool extern_value = false;
+
+    string operands;
+    string second_operand;
+
+    operands = instruction.substr(instruction_size, instruction.size() - instruction_size - 1);
+    instruction = instruction.substr(0, instruction_size);
+
+    comma_index = operands.find(',');
+    if(operands.find(',') != string::npos){
+        extern_value = true;
+        second_operand = operands.substr(comma_index + 1, operands.size() - (comma_index + 1));
+        operands = operands.substr(0, comma_index); 
+
+    }
+
+
+    bool exist = false;
+    for(int i = 0 ; i < jumps_pointers.size() ; i++){
+        if(operands == jumps_pointers[i].first){
+            exist = true;
+            opcode_first_value = jumps_pointers[i].second;
+        }
+    }
+
+    if(!exist && !first_time){
+        printf("Error in line %ld, pointer %s doesn't exist!\n", line, operands.c_str());
+        exit(7);
+    }else{
+        if(extern_value) opcode += 0x55;
+        else opcode += 0x54;
+    }
+    
+
+    if(!first_time){
+        fwrite(&opcode, sizeof(uint8_t), 1, output);
+        PC++;
+
+        fwrite(&opcode_first_value, sizeof(uint8_t), 1, output);
+        PC++;
+
+        if(extern_value){
+            bool c = false;
+            bool n = false;
+            bool z = false;
+
+            for(char flag : second_operand){
+                if(flag == 'c'){
+                    if(c){
+                        printf("Error in line %ld, can't repeat flags.\n", line);
+                        exit(8); 
+                    }
+                    opcode_second_value +=4;
+                    c = true;
+                }
+
+                else if(flag == 'n'){
+                    if(n){
+                        printf("Error in line %ld, can't repeat flags.\n", line);
+                        exit(8); 
+                    }
+                    opcode_second_value +=2;
+                    n = true;
+                }
+
+                else if(flag == 'z'){
+                    if(z){
+                        printf("Error in line %ld, can't repeat flags.\n", line);
+                        exit(8); 
+                    }
+                    opcode_second_value +=1;
+                    z = true;
+                }
+                
+                else{
+                    printf("Error in line %ld, syntaxe error, need a valid conditional flag.\n", line);
+                    exit(8); 
+                }
+            }
+
+            if(!c && !n && !z){
+                printf("Error in line %ld, syntaxe error, need a valid conditional flag.\n", line);
+                exit(8); 
+            }
+
+            fwrite(&opcode_second_value, sizeof(uint8_t), 1, output);
+            PC++;
+
+        }
+        
+        if(extern_value) cout << PC-1 << ":" << instruction  << " " << operands << " " << second_operand << endl;
+        else cout << PC-1 << ":" << instruction  << " " << operands << endl;
+    }else{
+        PC += 2;
+        if(extern_value) PC++;
+    }
+    
+
+}
+
+void res(string &instruction, size_t &line, size_t &PC, FILE* output){
+    uint8_t instruction_size = 3;
+    uint8_t opcode = 0x1;
+
+    instruction = instruction.substr(0, instruction_size);
+
+    if(instruction != "res"){
+        printf("Error in line %ld, this instruction doesn't exist!\n", line);
+        exit(5);
+    }
+
+    fwrite(&opcode, sizeof(uint8_t), 1, output);
+    PC++;
+
+    cout << PC-1 << ":" << instruction  << endl;
+}
+void resf(string &instruction, size_t &line, size_t &PC, FILE* output){
+    uint8_t instruction_size = 4;
+    uint8_t opcode = 0x2;
+
+    instruction = instruction.substr(0, instruction_size);
+
+    if(instruction != "resf"){
+        printf("Error in line %ld, this instruction doesn't exist!\n", line);
+        exit(5);
+    }
+
+    fwrite(&opcode, sizeof(uint8_t), 1, output);
+    PC++;
+
+    cout << PC-1 << ":" << instruction  << endl;
+}
