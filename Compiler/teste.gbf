@@ -1,0 +1,26 @@
+res;
+load r1, 5;
+load r2, 10;
+load x, r1;
+load y, r2;
+sum x, y;
+load r1, a;
+mult x, y;
+
+and x, y;
+comp x, y;
+
+jump label_maior, c;
+jump label_menor;
+
+-label_maior;
+div x, y;
+sum 25, 12;
+jump fim;
+
+-label_menor;
+mult x, y;
+
+-fim;
+jump fim;
+    

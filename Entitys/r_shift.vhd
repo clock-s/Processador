@@ -12,7 +12,7 @@ entity R_SHIFT_PORTS is port (
     
     
     input : in std_logic_vector (7 downto 0);
-    num_shift : in std_logic_vector (2 downto 0);
+    num_shift : in std_logic_vector (7 downto 0);
     clock : in std_logic;
 	reset : in std_logic
 );
@@ -50,7 +50,7 @@ begin
             if flag_box(0) = '1' and flag_box(1) = '0' then
             
             	
-                if contador >= to_integer(num_shift) then
+                if contador >= to_integer(num_shift) or contador = 8 then
             		flag_box(1) <= '1';
             	
                 else
@@ -59,7 +59,7 @@ begin
 
                   temp_carry <= temp_out(0);
 
-                  contador <= contador + 1;
+                  if contador /= 8 then  contador <= contador + 1; end if;
             
             	end if;
             

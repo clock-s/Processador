@@ -151,6 +151,8 @@ int main(int argc, char const *argv[]){
     //NOTA: NESSE COMPILADOR, ELE COMPILA O CÓDIGO DUAS VEZES, NA PRIMEIRA ELE VÊ TODOS OS ELEMENTOS 
     //QUE CAUSAM JUMPS "-ALGUMA_COISA" E NA SEGUNDA É Q ELE UTILIZA OS JUMPS DE FATO
 
+
+    cout << "First Pass: " << endl;
     while(!feof(input_file)){
 
         instruction.clear();
@@ -176,8 +178,9 @@ int main(int argc, char const *argv[]){
         if(instruction.size() > 1){
             
 
-            
-            if(instruction.find("load") != string::npos)        load(instruction, line, PC, output_file);
+            if(jump_stacking(instruction, line, PC, output_file, true)){}
+            else if(instruction.find("jump") != string::npos)   jump(instruction, line, PC, output_file, true);
+            else if(instruction.find("load") != string::npos)        load(instruction, line, PC, output_file);
             else if(instruction.find("sum") != string::npos)    sum(instruction, line, PC, output_file);
             else if(instruction.find("mult") != string::npos)   mult(instruction, line, PC, output_file);
             else if(instruction.find("sub") != string::npos)    sub(instruction, line, PC, output_file);
@@ -191,8 +194,6 @@ int main(int argc, char const *argv[]){
             else if(instruction.find("nop") != string::npos)    nop(instruction, line, PC, output_file);            
             else if(instruction.find("lshift") != string::npos) lshift(instruction, line, PC, output_file);            
             else if(instruction.find("rshift") != string::npos) rshift(instruction, line, PC, output_file);
-            else if(jump_stacking(instruction, line, PC, output_file, true)){}
-            else if(instruction.find("jump") != string::npos)   jump(instruction, line, PC, output_file, true);
             else if(instruction.find("resf") != string::npos)   resf(instruction, line, PC, output_file);
             else if(instruction.find("res") != string::npos)    res(instruction, line, PC, output_file);
             else{
@@ -208,10 +209,21 @@ int main(int argc, char const *argv[]){
 
     }
 
-
+    line = 0;
+    PC = 0;
+    
     fseek(input_file, 0, SEEK_SET);
     fseek(output_file, 0, SEEK_SET);
 
+    cout << "Labels: " << endl;
+    for(int i = 0 ; i < jumps_pointers.size() ; i++){
+        printf("%s %d\n", jumps_pointers[i].first.c_str(), jumps_pointers[i].second);
+    }
+
+    cout << endl;
+
+
+    cout << "Second pass" << endl;
     while(!feof(input_file)){
 
         instruction.clear();
@@ -238,7 +250,10 @@ int main(int argc, char const *argv[]){
             
 
             
-            if(instruction.find("load") != string::npos)        load(instruction, line, PC, output_file);
+            
+            if(jump_stacking(instruction, line, PC, output_file)){}
+            else if(instruction.find("jump") != string::npos)   jump(instruction, line, PC, output_file);
+            else if(instruction.find("load") != string::npos)        load(instruction, line, PC, output_file);
             else if(instruction.find("sum") != string::npos)    sum(instruction, line, PC, output_file);
             else if(instruction.find("mult") != string::npos)   mult(instruction, line, PC, output_file);
             else if(instruction.find("sub") != string::npos)    sub(instruction, line, PC, output_file);
@@ -252,8 +267,6 @@ int main(int argc, char const *argv[]){
             else if(instruction.find("nop") != string::npos)    nop(instruction, line, PC, output_file);            
             else if(instruction.find("lshift") != string::npos) lshift(instruction, line, PC, output_file);            
             else if(instruction.find("rshift") != string::npos) rshift(instruction, line, PC, output_file);
-            else if(jump_stacking(instruction, line, PC, output_file)){}
-            else if(instruction.find("jump") != string::npos)   jump(instruction, line, PC, output_file);
             else if(instruction.find("resf") != string::npos)   resf(instruction, line, PC, output_file);
             else if(instruction.find("res") != string::npos)    res(instruction, line, PC, output_file);
             else{
@@ -326,6 +339,14 @@ void load(string &instruction, size_t &line, size_t &PC, FILE* output){
         opcode_second_value = atoi(second_operand.c_str());
     }
 
+    if(second_operand == "a"){
+        opcode_second_value = 0;
+    }else if(second_operand == "ma"){
+        opcode_second_value = 1;
+    }else if(second_operand == "[ma]" ){
+        opcode_second_value = 2;
+    }
+
     //0001XXXX
     if(is_math_register(operands) && is_memory_register(second_operand)) opcode = 0x10;
 
@@ -335,7 +356,7 @@ void load(string &instruction, size_t &line, size_t &PC, FILE* output){
     //0011XXXX
     else if(is_memory_register(operands) && (is_memory_register(second_operand) || extern_value)) opcode = 0x30;
 
-    //0010XXXX
+    //0100XXXX
     else if((is_memory_register(operands) && is_special_register(second_operand))
     || (operands.compare("ma") && is_memory_register(second_operand))) opcode = 0x40;
 
@@ -350,7 +371,7 @@ void load(string &instruction, size_t &line, size_t &PC, FILE* output){
         PC++;
 
     }else{
-        opcode = opcode + opcode_first_value + opcode_first_value/4;
+        opcode = opcode + opcode_first_value + (opcode_first_value >> 2);
         fprintf(output, "%02X\n", opcode);
         PC++;
         
@@ -450,7 +471,7 @@ void sum(string &instruction, size_t &line, size_t &PC, FILE* output){
 }
 
 //MULTIPLICAÇÃO
-void mult(string &instruction, size_t &line, size_t &PC, FILE* output){
+void mult(string &instruction, size_t &line, size_t &PC, FILE* output){    
     uint8_t instruction_size = 4;
     uint8_t comma_index = -1;
     uint8_t opcode = 0;
@@ -538,7 +559,7 @@ void mult(string &instruction, size_t &line, size_t &PC, FILE* output){
 }
 
 //SUBTRAÇÃO
-void sub(string &instruction, size_t &line, size_t &PC, FILE* output){
+void sub(string &instruction, size_t &line, size_t &PC, FILE* output){    
     uint8_t instruction_size = 3;
     uint8_t comma_index = -1;
     uint8_t opcode = 0;
@@ -677,7 +698,7 @@ void div(string &instruction, size_t &line, size_t &PC, FILE* output){
 }
 
 //RESTO
-void mod(string &instruction, size_t &line, size_t &PC, FILE* output){
+void mod(string &instruction, size_t &line, size_t &PC, FILE* output){    
     uint8_t instruction_size = 3;
     uint8_t comma_index = -1;
     uint8_t opcode = 0;
@@ -732,12 +753,14 @@ void mod(string &instruction, size_t &line, size_t &PC, FILE* output){
     }
 
     cout << PC-1 << ":" << instruction  << " " << operands << " " << second_operand << endl;
+    
+    
 
 
 }
 
 //AND
-void b_and(string &instruction, size_t &line, size_t &PC, FILE* output, uint8_t size, uint8_t instruction_opcode){    
+void b_and(string &instruction, size_t &line, size_t &PC, FILE* output, uint8_t size, uint8_t instruction_opcode){        
     uint8_t instruction_size = size;
     uint8_t comma_index = -1;
     uint8_t opcode = 0;
@@ -807,7 +830,6 @@ void b_and(string &instruction, size_t &line, size_t &PC, FILE* output, uint8_t 
 
     cout << PC-1 << ":" << instruction  << " " << operands << " " << second_operand << endl;
 
-
 }
 
 //OR
@@ -822,7 +844,7 @@ void b_xor(string &instruction, size_t &line, size_t &PC, FILE* output){
 
 //COMP
 void comp(string &instruction, size_t &line, size_t &PC, FILE* output){
-    b_and(instruction, line, PC, output, 4, 0xC);
+    b_and(instruction, line, PC, output, 4, 0xC0);
 }
 
 //NOT
@@ -875,7 +897,7 @@ void b_not(string &instruction, size_t &line, size_t &PC, FILE* output){
 }
 
 //NOP
-void nop(string &instruction, size_t &line, size_t &PC, FILE* output){
+void nop(string &instruction, size_t &line, size_t &PC, FILE* output){    
     uint8_t instruction_size = 3;
     uint8_t opcode = 0;
 
@@ -1111,6 +1133,7 @@ void jump(string &instruction, size_t &line, size_t &PC, FILE* output, bool firs
 
     string operands;
     string second_operand;
+    
 
     operands = instruction.substr(instruction_size, instruction.size() - instruction_size - 1);
     instruction = instruction.substr(0, instruction_size);

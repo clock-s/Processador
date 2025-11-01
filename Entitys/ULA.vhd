@@ -159,7 +159,7 @@ begin
                     inst_reg <= instruction;
                     
                	when sample =>
-                	--reset <= '0';
+                	reset <= '0';
                     ula_state := in_process;
                     
                     case inst_reg is
