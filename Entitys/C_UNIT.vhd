@@ -540,7 +540,7 @@ begin
                     
                     --report "A: " & std_logic_vector'image(A);
                
-               		if extern_B = '1' then PC <= PC + 1; end if;
+               		if extern_B = '1' and extern_A = '1' then PC <= PC + 1; end if;
                 
                 
                     if extern_B = '1' or math(0) = '1' or memory(0) = '1' then
@@ -617,6 +617,8 @@ begin
                     	when sum | sub | comp | xor_i | not_i | and_i | or_i | mult | div | mod_i | lshift | rshift =>
                     	if ULA_finished = '1' then
                         	c_state := complete;
+                            report "Teste" & std_logic_vector'image(ULA_output) & " codigo " & std_logic_vector'image(ULA_instruction);
+                            report "VALORES: " & std_logic_vector'image(ULA_A) & " " & std_logic_vector'image(ULA_B);
                             
                         end if;
                         	

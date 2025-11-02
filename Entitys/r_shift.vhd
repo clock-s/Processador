@@ -31,6 +31,7 @@ begin
     output <= temp_out when flag_box(1) = '1' else "ZZZZZZZZ";
     carry <= temp_carry when flag_box(1) = '1' else 'Z';
     --output <= temp_out;
+    flag <= flag_box(1);
     
    	process(clock, reset)
     begin

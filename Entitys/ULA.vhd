@@ -17,7 +17,8 @@ end ULA;
 
 
 architecture ULA_COMPORTAMENT of ULA is
-	signal flags, inst_reg : std_logic_vector(3 downto 0);
+	signal inst_reg : std_logic_vector(3 downto 0);
+    signal flags : std_logic_vector (1 downto 0);
 	signal A_reg, B_reg : std_logic_vector(7 downto 0);
     signal out_sum, out_sub, out_mult, out_div, out_mod,
     out_comp, out_bitwise, out_lshift, out_rshift : std_logic_vector (7 downto 0);
@@ -96,29 +97,22 @@ architecture ULA_COMPORTAMENT of ULA is
     ); 
     end component;
     
-    component L_SHIFT_PORTS is port (
+    component PAR_L_SHIFT_PORTS is port (
         output: out std_logic_vector (7 downto 0);
         carry : out std_logic;
-        flag : out std_logic;
-
 
         input : in std_logic_vector (7 downto 0);
-        num_shift : in std_logic_vector (7 downto 0);
-        clock : in std_logic;
-        reset : in std_logic
+        num_shift : in std_logic_vector (7 downto 0)
+
     );
     end component;
     
-    component R_SHIFT_PORTS is port (
+    component PAR_R_SHIFT_PORTS is port (
         output: out std_logic_vector (7 downto 0);
-        carry : out std_logic;
-        flag : out std_logic;
-
+        carry : out std_logic; 
 
         input : in std_logic_vector (7 downto 0);
-        num_shift : in std_logic_vector (7 downto 0);
-        clock : in std_logic;
-        reset : in std_logic
+        num_shift : in std_logic_vector (7 downto 0)
     );
     end component;
 
@@ -128,12 +122,12 @@ begin
 	
     SUM  : SUM_8_BITS_PORTS port map(sum_carry, out_sum, A_reg, B_reg, '0');
     SUB  : SUBTRACTION_8_BITS_PORTS port map(out_sub, sub_carry, A_reg, B_reg);
-    MULT : MULT_PORTS port map(out_mult, mult_carry, flags(3), A_reg, B_reg, clock, reset);
-    DIV_MOD : MOD_DIV_PORTS port map(out_div, out_mod, flags(2), A_reg, B_reg, clock, reset);
+    MULT : MULT_PORTS port map(out_mult, mult_carry, flags(1), A_reg, B_reg, clock, reset);
+    DIV_MOD : MOD_DIV_PORTS port map(out_div, out_mod, flags(0), A_reg, B_reg, clock, reset);
     COMP : COMPARE port map (out_comp(3 downto 0), A_reg, B_reg);
     BIT_WISE : BIT_WISE_PORTS port map(out_bitwise, A_reg, B_reg, bitwise_sel);
-    LSHIFT : L_SHIFT_PORTS port map(out_lshift, carry_lshift, flags(1), A_reg, B_reg, clock, reset);
-    RSHIFT : R_SHIFT_PORTS port map(out_rshift, carry_rshift, flags(0), A_reg, B_reg, clock, reset);
+    LSHIFT : PAR_L_SHIFT_PORTS port map(out_lshift, carry_lshift, A_reg, B_reg);
+    RSHIFT : PAR_R_SHIFT_PORTS port map(out_rshift, carry_rshift, A_reg, B_reg);
 	
     ULA_DECODER : process(clock)
     	variable ula_state : state := idle;
@@ -173,28 +167,18 @@ begin
                 when in_process =>
                 	
                     case inst_reg is
-                        when "0000" | "0001" | "0010" | "0011" | "0100" | "0101" | "0110" =>
+                        when "0000" | "0001" | "0010" | "0011" | "0100" | "0101" | "0110" | "1010" | "1011" =>
                             ula_state := complete;
 
                         when "0111" => -- MULT
-                            if flags(3) = '1' then
-                                ula_state := complete;
-                            end if;
-                        when "1000" => -- DIV 
-                            if flags(2) = '1' then
-                                ula_state := complete;
-                            end if;
-                        when "1001" => -- MOD
-                            if flags(2) = '1' then
-                                ula_state := complete;
-                            end if;
-                            
-                        when "1010" => -- LSHIFT
                             if flags(1) = '1' then
                                 ula_state := complete;
                             end if;
-                            
-                        when "1011" => -- RSHIFT 
+                        when "1000" => -- DIV 
+                            if flags(0) = '1' then
+                                ula_state := complete;
+                            end if;
+                        when "1001" => -- MOD
                             if flags(0) = '1' then
                                 ula_state := complete;
                             end if;
@@ -212,6 +196,9 @@ begin
                 when complete =>
                     finished <= '1';
                     ula_state := save;
+                    
+                    
+                    
 
                 when save =>
                     ula_state := idle;

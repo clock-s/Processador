@@ -1,5 +1,5 @@
 res;
-load r1, 5;
+load r1, 105;
 load r2, 10;
 load x, r1;
 load y, r2;
@@ -15,11 +15,15 @@ jump label_menor;
 
 -label_maior;
 div x, y;
+mod x, y;
 sum 25, 12;
 jump fim;
 
 -label_menor;
+lshift x, 1;
+rshift x, 1;
 mult x, y;
+sum 10, 15;
 
 -fim;
 jump fim;

@@ -1,8 +1,0 @@
-sub x, y;
-sub y, x;
-sub 5, y;
-sub y, 71;
-sub 100, 5;
-sub z, w;
-sub y, w;
-sub z, y;

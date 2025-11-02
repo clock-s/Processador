@@ -31,6 +31,7 @@ begin
     output <= temp_out when flag_box(1) = '1' else "ZZZZZZZZ";
     carry <= temp_carry when flag_box(1) = '1' else 'Z';
     --output <= temp_out;
+    flag <= flag_box(1);
     
    	process(clock, reset)
     begin
@@ -50,7 +51,7 @@ begin
             if flag_box(0) = '1' and flag_box(1) = '0' then
             
             	
-                if contador >= to_integer(num_shift) or contador = 8 then
+                if contador >= to_integer(num_shift) or contador >= 8 then
             		flag_box(1) <= '1';
             	
                 else
@@ -59,9 +60,9 @@ begin
 
                   temp_carry <= temp_out(7);
 
-                  if contador /= 8 then 
-                  	contador <= contador + 1; 
-                  end if;
+                   
+                  contador <= contador + 1; 
+                 
             
             	end if;
             
