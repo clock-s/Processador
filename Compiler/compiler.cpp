@@ -41,6 +41,8 @@ void rshift(string &instruction, size_t &line, size_t &PC, FILE* output);
 
 bool jump_stacking(string &instruction, size_t &line, size_t &PC, FILE* output, bool first_time = false);
 
+void parity(string &instruction, size_t &line, size_t &PC, FILE* output);
+
 
 
 bool is_all_digits(string s){
@@ -180,7 +182,8 @@ int main(int argc, char const *argv[]){
 
             if(jump_stacking(instruction, line, PC, output_file, true)){}
             else if(instruction.find("jump") != string::npos)   jump(instruction, line, PC, output_file, true);
-            else if(instruction.find("load") != string::npos)        load(instruction, line, PC, output_file);
+            else if(instruction.find("load") != string::npos)   load(instruction, line, PC, output_file);
+            else if(instruction.find("par") != string::npos)    parity(instruction, line, PC, output_file);
             else if(instruction.find("sum") != string::npos)    sum(instruction, line, PC, output_file);
             else if(instruction.find("mult") != string::npos)   mult(instruction, line, PC, output_file);
             else if(instruction.find("sub") != string::npos)    sub(instruction, line, PC, output_file);
@@ -254,6 +257,7 @@ int main(int argc, char const *argv[]){
             if(jump_stacking(instruction, line, PC, output_file)){}
             else if(instruction.find("jump") != string::npos)   jump(instruction, line, PC, output_file);
             else if(instruction.find("load") != string::npos)        load(instruction, line, PC, output_file);
+            else if(instruction.find("par") != string::npos)    parity(instruction, line, PC, output_file);
             else if(instruction.find("sum") != string::npos)    sum(instruction, line, PC, output_file);
             else if(instruction.find("mult") != string::npos)   mult(instruction, line, PC, output_file);
             else if(instruction.find("sub") != string::npos)    sub(instruction, line, PC, output_file);
@@ -1281,4 +1285,34 @@ void resf(string &instruction, size_t &line, size_t &PC, FILE* output){
     PC++;
 
     cout << PC-1 << ":" << instruction  << endl;
+}
+
+
+void parity(string &instruction, size_t &line, size_t &PC, FILE* output){
+    uint8_t instruction_size = 3;
+    uint8_t comma_index = -1;
+    uint8_t opcode = 0;
+
+    int8_t opcode_first_value = 0;
+    bool extern_value = false;
+
+    string operands;
+
+    operands = instruction.substr(instruction_size, instruction.size() - instruction_size - 1);
+    
+    opcode += 0x50;
+
+    operand_to_opcode(registers_first_operand, operands, opcode_first_value, line);
+
+    opcode_first_value = opcode_first_value >> 2;
+
+    opcode_first_value += 0x8;
+
+    opcode += opcode_first_value;
+
+    fprintf(output, "%02X\n", opcode);
+    PC++;
+
+    cout << PC-1 << ":" << instruction  << " " << operands << endl;
+
 }

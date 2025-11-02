@@ -25,6 +25,10 @@ architecture C_UNIT_ARCH of C_UNIT is
     signal flags, compare_statement : std_logic_vector (7 downto 0);
     
     
+    signal P_A : std_logic_vector (7 downto 0);
+    signal P_flag : std_logic;
+    
+    
    	signal math_registers, memory_registers : std_logic_vector (7 downto 0);
     signal math_write, memory_write, reset: std_logic;
     signal math_addr, memory_addr : std_logic_vector (1 downto 0);
@@ -82,6 +86,13 @@ architecture C_UNIT_ARCH of C_UNIT is
         B : in std_logic_vector (7 downto 0)
     );
     end component;
+    
+    component PARITY is port(
+        flag : out std_logic;
+
+        A : in std_logic_vector(7 downto 0)
+    ); 
+    end component;
 begin
 
 	CLOCK_PROCESS : CLOCK_PORTS port map (clock);
@@ -95,6 +106,8 @@ begin
     
     
     ULA_COMPONENT : ULA port map (ULA_output, ULA_finished, overflow, ULA_A, ULA_B, ULA_permission, ULA_instruction, clock);
+    
+    PARITY_CHECK : PARITY port map(P_flag, P_A);
     
 	
     CONTROL_UNIT : process(clock)
@@ -305,6 +318,11 @@ begin
                                     addr_2 := instruction_reg(1 downto 0);
                                 
                             end case;
+                            
+                        when par =>
+                        	math(1) := '1'; addr_1 := instruction_reg(1 downto 0);
+                        	
+                        
                             
                             -- 100 para MA 101 para a RAM
                         when load =>
@@ -593,6 +611,10 @@ begin
                         when jump | resf =>
                         	compare_statement <= B;
                         	c_state := complete;
+                        
+                        when par =>
+                        	P_A <= A;
+                            c_state := complete;
                             
                         when others => report "Error in perm!";
                     
@@ -617,8 +639,8 @@ begin
                     	when sum | sub | comp | xor_i | not_i | and_i | or_i | mult | div | mod_i | lshift | rshift =>
                     	if ULA_finished = '1' then
                         	c_state := complete;
-                            report "Teste" & std_logic_vector'image(ULA_output) & " codigo " & std_logic_vector'image(ULA_instruction);
-                            report "VALORES: " & std_logic_vector'image(ULA_A) & " " & std_logic_vector'image(ULA_B);
+                            --report "Teste" & std_logic_vector'image(ULA_output) & " codigo " & std_logic_vector'image(ULA_instruction);
+                            --report "VALORES: " & std_logic_vector'image(ULA_A) & " " & std_logic_vector'image(ULA_B);
                             
                         end if;
                         	
@@ -666,8 +688,13 @@ begin
                         
                         when load =>
                         	report "Novo valor armazenado: " & std_logic_vector'image(B);
-                            
+                        
+                        when par =>
+                        	flags(7) <= P_flag;
+                            report "Flag: " & std_logic'image(P_flag) & "A: " & std_logic_vector'image(A);
+                        
                         when nop => null;
+                        
                         when others => null;
                         
                         
@@ -697,4 +724,5 @@ begin
 
 
 end C_UNIT_ARCH;
+
 
