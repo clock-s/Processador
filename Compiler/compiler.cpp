@@ -153,17 +153,19 @@ int main(int argc, char const *argv[]){
     //NOTA: NESSE COMPILADOR, ELE COMPILA O CÓDIGO DUAS VEZES, NA PRIMEIRA ELE VÊ TODOS OS ELEMENTOS 
     //QUE CAUSAM JUMPS "-ALGUMA_COISA" E NA SEGUNDA É Q ELE UTILIZA OS JUMPS DE FATO
 
-
+    bool ignore = false;
     cout << "First Pass: " << endl;
     while(!feof(input_file)){
 
         instruction.clear();
         opcode = 0;
 
-        while(caracter != ';' && !feof(input_file)){
+        while((caracter != ';' && !feof(input_file)) || ignore == true){
             caracter = fgetc(input_file);
             
-            if(caracter != ' ' && caracter != '\n' && caracter != '\n')
+            if (caracter == '"') ignore = !ignore;
+
+            if(caracter != ' ' && caracter != '\n' && caracter != '\n' && caracter != '"' && ignore == false)
                 instruction.push_back(tolower(caracter));
             //cout << instruction << endl;
 
@@ -173,6 +175,7 @@ int main(int argc, char const *argv[]){
         //line++;
 
         caracter = '-';
+        
 
         //cout << "Lido: " << instruction << " => ";
 
@@ -225,7 +228,7 @@ int main(int argc, char const *argv[]){
 
     cout << endl;
 
-
+    ignore = false;
     cout << "Second pass" << endl;
     while(!feof(input_file)){
 
@@ -235,7 +238,9 @@ int main(int argc, char const *argv[]){
         while(caracter != ';' && !feof(input_file)){
             caracter = fgetc(input_file);
             
-            if(caracter != ' ' && caracter != '\n' && caracter != '\n')
+            if (caracter == '"') ignore = !ignore;
+
+            if(caracter != ' ' && caracter != '\n' && caracter != '\n' && caracter != '"' && ignore == false)
                 instruction.push_back(tolower(caracter));
             //cout << instruction << endl;
 

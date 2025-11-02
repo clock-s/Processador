@@ -1,7 +1,7 @@
 res;
-load r1, 105;
+load r1, 105;  "Testando"
 load r2, 7;
-load x, r1;
+load x, "teste2"r1;
 load y, r2;
 sum x, y;
 load r1, a;
@@ -9,7 +9,7 @@ mult x, y;
 par x;
 par y;
 
-and x, y;
+and "eita!!" x, y;
 comp x, y;
 
 jump label_maior, c;
