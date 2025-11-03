@@ -130,7 +130,7 @@ int main(int argc, char const *argv[]){
     registers_first_operand["r2"] = registers_first_operand["y"] = 4; //0100
     registers_first_operand["r3"] = registers_first_operand["z"] = 8; //1000
     registers_first_operand["r4"] = registers_first_operand["w"] = 12; //1100
-    registers_first_operand["a"] = registers_first_operand["ma"] = 128; // out of all ranges, dont had a pattern
+    registers_first_operand["a"] = registers_first_operand["ma"] =  registers_first_operand["[ma]"] =128; // out of all ranges, dont had a pattern
     
 
 
@@ -140,7 +140,7 @@ int main(int argc, char const *argv[]){
     registers_second_operand["r2"] = registers_second_operand["y"] = 1; //0001
     registers_second_operand["r3"] = registers_second_operand["z"] = 2; //0010
     registers_second_operand["r4"] = registers_second_operand["w"] = 3; //0011
-    registers_second_operand["a"] = registers_second_operand["ma"] = 128; // out of all ranges
+    registers_second_operand["a"] = registers_second_operand["ma"] = registers_second_operand["[ma]"] = 128; // out of all ranges
    
 
     size_t PC = 0;
@@ -345,7 +345,7 @@ void load(string &instruction, size_t &line, size_t &PC, FILE* output){
         operand_to_opcode(registers_second_operand, second_operand, opcode_second_value, line);
     }else{
         extern_value = true;
-        opcode_second_value = atoi(second_operand.c_str());
+        opcode_second_value = static_cast<int8_t>(atoi(second_operand.c_str()));
     }
 
     if(second_operand == "a"){
@@ -356,6 +356,17 @@ void load(string &instruction, size_t &line, size_t &PC, FILE* output){
         opcode_second_value = 2;
     }
 
+    if(operands == "[ma]"){
+        opcode_first_value = 0;
+    }
+    else if(operands == "ma"){
+        opcode_first_value = opcode_second_value;
+        opcode_second_value = 3;
+        opcode_first_value = opcode_first_value << 2;
+    }
+
+   
+
     //0001XXXX
     if(is_math_register(operands) && is_memory_register(second_operand)) opcode = 0x10;
 
@@ -365,10 +376,14 @@ void load(string &instruction, size_t &line, size_t &PC, FILE* output){
     //0011XXXX
     else if(is_memory_register(operands) && (is_memory_register(second_operand) || extern_value)) opcode = 0x30;
 
+    //0101XXXX
+    else if((operands == "[ma]" && is_memory_register(second_operand))) opcode = 0x50;
+
     //0100XXXX
     else if((is_memory_register(operands) && is_special_register(second_operand))
-    || (operands.compare("ma") && is_memory_register(second_operand))) opcode = 0x40;
+    || (operands == "ma" && is_memory_register(second_operand))) opcode = 0x40;
 
+    
     else{
         printf("Error in line %ld, syntaxe statemant\n", line);
         exit(1);
@@ -390,7 +405,7 @@ void load(string &instruction, size_t &line, size_t &PC, FILE* output){
     }
 
     cout << PC-1 << ":" << instruction  << " " << operands << " " << second_operand << endl;
-            
+     printf("- %02X %02X %02X-\n", opcode , opcode_first_value, opcode_second_value); 
 }
 
 //SOMA
@@ -429,13 +444,13 @@ void sum(string &instruction, size_t &line, size_t &PC, FILE* output){
         opcode += 0xE;
         first_extern_value = true;
         second_extern_value = true;
-        opcode_first_value = atoi(operands.c_str());
-        opcode_second_value = atoi(second_operand.c_str());
+        opcode_first_value = static_cast<int8_t>(atoi(operands.c_str()));
+        opcode_second_value = static_cast<int8_t>(atoi(second_operand.c_str()));
 
     }else if(is_all_digits(operands) && is_math_register(second_operand)){
         swap(operands, second_operand);
         second_extern_value = true;
-        opcode_second_value = atoi(second_operand.c_str());
+        opcode_second_value = static_cast<int8_t>(atoi(second_operand.c_str()));
     }   
     
     if(!is_all_digits(operands))       operand_to_opcode(registers_first_operand, operands, opcode_first_value, line);
@@ -458,7 +473,7 @@ void sum(string &instruction, size_t &line, size_t &PC, FILE* output){
             opcode += opcode_first_value;
         }
         second_extern_value = true;
-        opcode_second_value = atoi(second_operand.c_str());
+        opcode_second_value = static_cast<int8_t>(atoi(second_operand.c_str()));
     }
     
 
@@ -515,13 +530,13 @@ void mult(string &instruction, size_t &line, size_t &PC, FILE* output){
         opcode += 0xE;
         first_extern_value = true;
         second_extern_value = true;
-        opcode_first_value = atoi(operands.c_str());
-        opcode_second_value = atoi(second_operand.c_str());
+        opcode_first_value = static_cast<int8_t>(atoi(operands.c_str()));
+        opcode_second_value = static_cast<int8_t>(atoi(second_operand.c_str()));
 
     }else if(is_all_digits(operands) && is_math_register(second_operand)){
         swap(operands, second_operand);
         second_extern_value = true;
-        opcode_second_value = atoi(second_operand.c_str());
+        opcode_second_value = static_cast<int8_t>(atoi(second_operand.c_str()));
     }   
     
 
@@ -546,7 +561,7 @@ void mult(string &instruction, size_t &line, size_t &PC, FILE* output){
             opcode += opcode_first_value;
         }
         second_extern_value = true;
-        opcode_second_value = atoi(second_operand.c_str());
+        opcode_second_value = static_cast<int8_t>(atoi(second_operand.c_str()));
     }
     
 
@@ -599,14 +614,14 @@ void sub(string &instruction, size_t &line, size_t &PC, FILE* output){
         opcode += 0xE;
         first_extern_value = true;
         second_extern_value = true;
-        opcode_first_value = atoi(operands.c_str());
-        opcode_second_value = -atoi(second_operand.c_str());
+        opcode_first_value = static_cast<int8_t>(atoi(operands.c_str()));
+        opcode_second_value = -static_cast<int8_t>(atoi(second_operand.c_str()));
         opcode += 0x60;
         is_a_sum = true;
     }else if(is_math_register(operands) && is_all_digits(second_operand)){
         opcode += 0x60;
         second_extern_value = true;
-        opcode_second_value = -atoi(second_operand.c_str());
+        opcode_second_value = -static_cast<int8_t>(atoi(second_operand.c_str()));
         is_a_sum = true;
     }
 
@@ -625,7 +640,7 @@ void sub(string &instruction, size_t &line, size_t &PC, FILE* output){
     else if(is_all_digits(operands) && is_math_register(second_operand)){
         opcode += opcode_second_value + (opcode_second_value << 2);
         first_extern_value = true;
-        opcode_first_value = atoi(operands.c_str());
+        opcode_first_value = static_cast<int8_t>(atoi(operands.c_str()));
     }
 
     fprintf(output, "%02X\n", opcode);
@@ -643,7 +658,7 @@ void sub(string &instruction, size_t &line, size_t &PC, FILE* output){
 
 
     cout << PC-1 << ":" << instruction  << " " << operands << " " << second_operand << endl;
-
+    printf("- %02X %02X %02X-\n", opcode , opcode_first_value, opcode_second_value);
 }
 
 //DIVISÃO
@@ -684,7 +699,7 @@ void div(string &instruction, size_t &line, size_t &PC, FILE* output){
     if(!is_all_digits(second_operand)) operand_to_opcode(registers_second_operand, second_operand, opcode_second_value, line);
     else{
         extern_value = true;
-        opcode_second_value = atoi(second_operand.c_str());
+        opcode_second_value = static_cast<int8_t>(atoi(second_operand.c_str()));
     }
 
     if(is_math_register(operands) && is_math_register(second_operand)) opcode += opcode_first_value + opcode_second_value;
@@ -744,7 +759,7 @@ void mod(string &instruction, size_t &line, size_t &PC, FILE* output){
     if(!is_all_digits(second_operand)) operand_to_opcode(registers_second_operand, second_operand, opcode_second_value, line);
     else{
         extern_value = true;
-        opcode_second_value = atoi(second_operand.c_str());
+        opcode_second_value = static_cast<int8_t>(atoi(second_operand.c_str()));
     }
 
     if(is_math_register(operands) && is_math_register(second_operand)) opcode += opcode_first_value + opcode_second_value;
@@ -799,7 +814,7 @@ void b_and(string &instruction, size_t &line, size_t &PC, FILE* output, uint8_t 
 
     if(is_all_digits(operands) && is_math_register(second_operand)){
         swap(operands, second_operand);
-        opcode_second_value = atoi(second_operand.c_str());
+        opcode_second_value = static_cast<int8_t>(atoi(second_operand.c_str()));
     }   
     
     if(!is_all_digits(operands))       operand_to_opcode(registers_first_operand, operands, opcode_first_value, line);
@@ -823,7 +838,7 @@ void b_and(string &instruction, size_t &line, size_t &PC, FILE* output, uint8_t 
     else if(is_math_register(operands) && is_all_digits(second_operand)){
         extern_value = true;
         opcode += opcode_first_value + (opcode_first_value >> 2);
-        opcode_second_value = atoi(second_operand.c_str());
+        opcode_second_value = static_cast<int8_t>(atoi(second_operand.c_str()));
     }else{
         printf("Error in line %ld, syntaxe statemant\n", line);
         exit(1);
@@ -885,7 +900,7 @@ void b_not(string &instruction, size_t &line, size_t &PC, FILE* output){
         
     }else if(is_all_digits(operands)){
         opcode += 0x9;
-        opcode_first_value = atoi(operands.c_str());
+        opcode_first_value = static_cast<int8_t>(atoi(operands.c_str()));
         extern_value = true;
     }
     else{
@@ -963,7 +978,7 @@ void lshift(string &instruction, size_t &line, size_t &PC, FILE* output){
     }else if(is_math_register(operands) && is_all_digits(second_operand)){
         opcode += 0xC0;
         extern_value = true;
-        opcode_second_value = atoi(second_operand.c_str());
+        opcode_second_value = static_cast<int8_t>(atoi(second_operand.c_str()));
 
         if(operands == math_registers[0]) opcode += 0x4; //x,V
         else if(operands == math_registers[1]) opcode += 0x8; //y,V
@@ -1038,7 +1053,7 @@ void rshift(string &instruction, size_t &line, size_t &PC, FILE* output){
             if(is_all_digits(second_operand)){
                 opcode = 0x9D;
                 extern_value = true;
-                opcode_second_value = atoi(second_operand.c_str());
+                opcode_second_value = static_cast<int8_t>(atoi(second_operand.c_str()));
             }
         }else if(operands == math_registers[1]){ //y
             if(is_math_register(second_operand)){
@@ -1054,7 +1069,7 @@ void rshift(string &instruction, size_t &line, size_t &PC, FILE* output){
             if(is_all_digits(second_operand)){
                 opcode = 0xAC;
                 extern_value = true;
-                opcode_second_value = atoi(second_operand.c_str());
+                opcode_second_value = static_cast<int8_t>(atoi(second_operand.c_str()));
             }
         }else if(operands == math_registers[2]){ //z
             if(is_math_register(second_operand)){
@@ -1070,7 +1085,7 @@ void rshift(string &instruction, size_t &line, size_t &PC, FILE* output){
             if(is_all_digits(second_operand)){
                 opcode = 0x8E;
                 extern_value = true;
-                opcode_second_value = atoi(second_operand.c_str());
+                opcode_second_value = static_cast<int8_t>(atoi(second_operand.c_str()));
             }
         }else if(operands == math_registers[3]){//w
             if(is_math_register(second_operand)){
@@ -1086,7 +1101,7 @@ void rshift(string &instruction, size_t &line, size_t &PC, FILE* output){
             if(is_all_digits(second_operand)){
                 opcode = 0x5F;
                 extern_value = true;
-                opcode_second_value = atoi(second_operand.c_str());
+                opcode_second_value = static_cast<int8_t>(atoi(second_operand.c_str()));
             }
         }
 

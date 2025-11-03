@@ -13,9 +13,7 @@ architecture C_UNIT_ARCH of C_UNIT is
 	signal clock : std_logic;
 	signal PC : integer range 0 to 255 := 0;
     signal instruction : std_logic_vector (7 downto 0);
-    signal RAM_memory : std_logic_vector (7 downto 0);
-    signal MA : integer range 0 to 255;
-    signal RAM_write : std_logic;
+    
     
     signal ULA_OUTPUT, ULA_A, ULA_B : std_logic_vector (7 downto 0);
     signal ULA_permission, ULA_finished, overflow : std_logic;
@@ -29,9 +27,10 @@ architecture C_UNIT_ARCH of C_UNIT is
     signal P_flag : std_logic;
     
     
-   	signal math_registers, memory_registers : std_logic_vector (7 downto 0);
-    signal math_write, memory_write, reset: std_logic;
+   	signal RAM_data, math_registers, memory_registers : std_logic_vector (7 downto 0);
+    signal RAM_write, math_write, memory_write, reset: std_logic;
     signal math_addr, memory_addr : std_logic_vector (1 downto 0);
+    signal MA : std_logic_vector (7 downto 0);
     
 	
     type state is (idl, in_instruction, get_1, get_2, perm, load_save, in_process, complete);
@@ -79,6 +78,18 @@ architecture C_UNIT_ARCH of C_UNIT is
     );
     end component;
     
+    component RAM is port(
+        clock      : in std_logic;
+        reset 	   : in std_logic;
+        write_read : in std_logic; -- 0 to read and 1 to write
+
+        addr  : in std_logic_vector (7 downto 0) := "00000000";
+
+        data : inout std_logic_vector (7 downto 0)
+
+    );
+    end component;
+    
     component CONDITIONAL is port (
         flag : out std_logic;
 
@@ -101,8 +112,12 @@ begin
     
     
     INTERNAL_MEMORY : ROM port map (instruction, PC);
+    
     MATH_REGISTER_PACK : PACK_REGISTERS_PORTS port map (clock, reset, math_write, math_addr, math_registers);
+    
 	MEMORY_REGISTERS_PACK : PACK_REGISTERS_PORTS port map (clock, reset, memory_write, memory_addr, memory_registers);
+    
+    RAM_MEM : RAM port map (clock, reset, RAM_write, MA, RAM_data);
     
     
     ULA_COMPONENT : ULA port map (ULA_output, ULA_finished, overflow, ULA_A, ULA_B, ULA_permission, ULA_instruction, clock);
@@ -113,6 +128,7 @@ begin
     CONTROL_UNIT : process(clock)
     	variable instruction_reg : std_logic_vector (7 downto 0);
         variable A, B : std_logic_vector ( 7 downto 0);
+                
         variable addr_1, addr_2 : std_logic_vector (1 downto 0);
         
         variable instruction_state : inst := none;
@@ -141,11 +157,14 @@ begin
                     math_write <= '0';
                     memory_write <= '0';
                     RAM_write <= '0';
+                    --RAM_data <= "ZZZZZZZZ";
                     extern_A := '0';
                     extern_B := '0';
                     extern_ram := '0';
                     instruction_state := none;
                     reset <= '0';
+                    A := "00000000";
+                    B := "00000000";
                     
                 	c_state := in_instruction;
                     
@@ -355,8 +374,8 @@ begin
                                     
                                     case instruction_reg(1 downto 0) is
                                     	when "00" => B := acummulator;
-                                        when "01" => B := std_logic_vector(to_unsigned(MA, 8));
-                                        when "10" => B := RAM_memory;
+                                        when "01" => B := MA;
+                                        when "10" => B := RAM_data; 
                                         when "11" =>
                                         	memory(0) := '1'; addr_2 := instruction_reg(3 downto 2);
                                         when others => null;
@@ -365,6 +384,7 @@ begin
                             	when x"5" =>
                                 	A := "00000" & "101";
                                     memory(0) := '1'; addr_2 := instruction_reg(1 downto 0);
+                                    
                                     
                                     
                                 when others => null;
@@ -603,7 +623,12 @@ begin
                             
                         	case instruction_reg(7 downto 4) is
                             	when x"1" => math_write <= '1'; math_addr <= A(1 downto 0);
-                                when x"2" | x"3" | x"4" => memory_write <= '1'; memory_addr <= A(1 downto 0);
+                                when x"2" | x"3" => memory_write <= '1'; memory_addr <= A(1 downto 0);
+                                when x"4" =>
+                                	case A(2 downto 0) is
+                                    	when "100" => MA <= B;
+                                        when others => memory_write <= '1'; memory_addr <= A(1 downto 0);
+                                    end case;
                                 when x"5" => RAM_write <= '1';
                             	when others => null;
                             end case;
@@ -626,7 +651,7 @@ begin
                 	case instruction_reg(7 downto 4) is
                     	when x"1" => math_registers <= B;
                         when x"2" | x"3" | x"4" => memory_registers <= B;
-                        when x"5" => RAM_memory <= B;
+                        when x"5" => RAM_data <= B;
                     	when others => null;
                     end case;
                     

@@ -1,0 +1,13 @@
+res;
+load r1, 5;
+load r2, 0;
+
+
+load x, r1;
+
+-contador;
+load y, r2;
+sum y, 1;
+load r2, a;
+comp x, y;
+jump contador, c;
